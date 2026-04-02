@@ -4,104 +4,80 @@ import plotly.express as px
 import re
 
 # Page config
-st.set_page_config(page_title="Executive IT Dashboard", layout="wide", page_icon="📊")
-
-# Custom CSS for a more professional feel
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    </style>
-    """, unsafe_index=True)
+st.set_page_config(page_title="Executive IT Dashboard", layout="wide")
 
 st.title("🚀 Executive IT Tracking Overview")
 
-uploaded_file = st.file_uploader("Upload your IT Tracking Excel file", type=["xlsx"])
-
-def parse_duration(text):
-    if pd.isna(text) or text == "": return 0
-    # Clean string to lowercase for better matching
-    text = str(text).lower()
-    weeks = re.search(r'(\d+)\s*week', text)
-    days = re.search(r'(\d+)\s*day', text)
-    total_days = (int(weeks.group(1)) * 7 if weeks else 0) + (int(days.group(1)) if days else 0)
-    return total_days
+uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
-        # Load data
-        df = pd.read_excel(uploaded_file, sheet_name=0) # Index 0 is safer than "Sheet1"
+        df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
         df.columns = df.columns.str.strip()
 
-        # Check for required columns
-        required_cols = ['Status', 'Severity', 'Duration', 'Item']
-        if not all(col in df.columns for col in required_cols):
-            st.error(f"Missing columns! Ensure file has: {', '.join(required_cols)}")
-            st.stop()
+        # --- DATA PROCESSING FOR DURATION ---
+        # We convert "X weeks Y days" into a number so we can make a chart
+        def parse_duration(text):
+            if pd.isna(text) or text == "": return 0
+            weeks = re.search(r'(\d+)\s*week', str(text))
+            days = re.search(r'(\d+)\s*day', str(text))
+            total_days = (int(weeks.group(1)) * 7 if weeks else 0) + (int(days.group(1)) if days else 0)
+            return total_days
 
-        # Data Processing
         df['Days_Open'] = df['Duration'].apply(parse_duration)
 
-        # --- KPI SECTION ---
+        # --- TOP LEVEL KPIs ---
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-        
-        with kpi1:
-            st.metric("Total Items", len(df))
-        with kpi2:
-            critical_count = len(df[df['Severity'].str.contains('Critical', case=False, na=False)])
-            st.metric("Critical Issues", critical_count, delta_color="inverse")
-        with kpi3:
-            avg_age = int(df[df['Days_Open'] > 0]['Days_Open'].mean()) if not df.empty else 0
-            st.metric("Avg. Age", f"{avg_age} Days")
-        with kpi4:
-            max_age = df['Days_Open'].max()
-            st.metric("Oldest Ticket", f"{max_age} Days")
+        kpi1.metric("Total Items", len(df))
+        kpi2.metric("Critical Issues", len(df[df['Severity'] == 'Critical']))
+        kpi3.metric("Avg. Age (Days)", int(df[df['Days_Open'] > 0]['Days_Open'].mean()))
+        kpi4.metric("Oldest Ticket (Days)", df['Days_Open'].max())
 
-        st.divider()
+        st.markdown("---")
 
-        # --- VISUALIZATION SECTION ---
+        # --- CHARTS ROW ---
         col_left, col_right = st.columns(2)
 
         with col_left:
             st.subheader("📋 Status Distribution")
-            fig_status = px.pie(df, names='Status', hole=0.5, 
-                               color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_status.update_layout(margin=dict(t=0, b=0, l=0, r=0))
+            # Donut Chart for Status
+            fig_status = px.pie(df, names='Status', hole=0.6, 
+                               color_discrete_sequence=px.colors.qualitative.Safe)
+            fig_status.update_traces(textinfo='percent+label')
             st.plotly_chart(fig_status, use_container_width=True)
 
         with col_right:
             st.subheader("⚠️ Severity Breakdown")
-            # Ensure custom colors match your data labels exactly
-            fig_sev = px.histogram(df, x='Severity', color='Severity',
-                                  color_discrete_map={
-                                      'Critical': '#D62728', 
-                                      'High': '#FF7F0E', 
-                                      'Medium': '#2CA02C'
-                                  })
+            # Bar Chart for Severity
+            sev_counts = df['Severity'].value_counts().reset_index()
+            fig_sev = px.bar(sev_counts, x='Severity', y='count', 
+                            color='Severity',
+                            color_discrete_map={'Critical': '#EF553B', 'High': '#FFA15A', '3 - Medium (P3)': '#FECB52'})
             st.plotly_chart(fig_sev, use_container_width=True)
 
-        # --- AGING REPORT ---
-        st.subheader("⏳ Top 5 Longest Running Items")
+        st.markdown("---")
+
+        # --- THE "EXCITING" DURATION OVERVIEW ---
+        st.subheader("⏳ Top 5 Longest Running Items (Aging Report)")
+        # Sort by Days_Open and take top 5
         aging_df = df[df['Status'] != 'Done'].sort_values(by='Days_Open', ascending=False).head(5)
         
-        if not aging_df.empty:
-            fig_duration = px.bar(aging_df, 
-                                 x='Days_Open', 
-                                 y='Item', 
-                                 orientation='h',
-                                 text='Duration',
-                                 color='Days_Open',
-                                 color_continuous_scale='OrRd')
-            fig_duration.update_layout(yaxis={'categoryorder':'total ascending'}, showlegend=False)
-            st.plotly_chart(fig_duration, use_container_width=True)
-        else:
-            st.success("No open items found! Everyone is on vacation. 🎉")
+        fig_duration = px.bar(aging_df, 
+                             x='Days_Open', 
+                             y='Item', 
+                             orientation='h',
+                             text='Duration',
+                             labels={'Days_Open': 'Days Open', 'Item': 'Task Name'},
+                             color='Days_Open',
+                             color_continuous_scale='Reds')
+        fig_duration.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_duration, use_container_width=True)
 
-        # Full Data View
-        with st.expander("🔍 View Raw Dataset"):
-            st.dataframe(df, use_container_width=True)
+        # Full Data List
+        with st.expander("See All Project Details"):
+            st.dataframe(df.drop(columns=['Days_Open']), use_container_width=True)
 
     except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
+        st.error(f"Make sure your Excel sheet is named 'Sheet1'. Error: {e}")
 else:
-    st.info("Please upload an Excel file to see the analysis.")
+    st.info("👆 Please upload the 'Track with IT.xlsx' file to generate the executive overview.")
