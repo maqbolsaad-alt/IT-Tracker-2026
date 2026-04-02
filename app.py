@@ -3,10 +3,20 @@ import pandas as pd
 import plotly.express as px
 import re
 
-# Page config
-st.set_page_config(page_title="Executive IT Dashboard", layout="wide")
+# 1. Force Dark Mode Theme
+st.set_page_config(page_title="Executive IT Dashboard", layout="wide", initial_sidebar_state="collapsed")
 
-st.title("🚀 Executive IT Tracking Overview")
+# Custom CSS to make the background dark and text pop
+st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0E1117;
+        color: #FFFFFF;
+    }
+    </style>
+    """, unsafe_allow_index=True)
+
+st.title("🌙 Executive IT Dashboard (Dark Mode)")
 
 uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
@@ -15,8 +25,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
         df.columns = df.columns.str.strip()
 
-        # --- DATA PROCESSING FOR DURATION ---
-        # We convert "X weeks Y days" into a number so we can make a chart
+        # Data Processing for Duration
         def parse_duration(text):
             if pd.isna(text) or text == "": return 0
             weeks = re.search(r'(\d+)\s*week', str(text))
@@ -26,58 +35,32 @@ if uploaded_file:
 
         df['Days_Open'] = df['Duration'].apply(parse_duration)
 
-        # --- TOP LEVEL KPIs ---
+        # --- Top Level KPIs ---
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("Total Items", len(df))
-        kpi2.metric("Critical Issues", len(df[df['Severity'] == 'Critical']))
+        kpi2.metric("Critical", len(df[df['Severity'] == 'Critical']))
         kpi3.metric("Avg. Age (Days)", int(df[df['Days_Open'] > 0]['Days_Open'].mean()))
-        kpi4.metric("Oldest Ticket (Days)", df['Days_Open'].max())
+        kpi4.metric("Oldest (Days)", df['Days_Open'].max())
 
-        st.markdown("---")
+        st.divider()
 
-        # --- CHARTS ROW ---
+        # --- Charts Row ---
         col_left, col_right = st.columns(2)
 
         with col_left:
             st.subheader("📋 Status Distribution")
-            # Donut Chart for Status
+            # Dark Donut Chart
             fig_status = px.pie(df, names='Status', hole=0.6, 
-                               color_discrete_sequence=px.colors.qualitative.Safe)
-            fig_status.update_traces(textinfo='percent+label')
+                               template="plotly_dark",
+                               color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_status, use_container_width=True)
 
         with col_right:
             st.subheader("⚠️ Severity Breakdown")
-            # Bar Chart for Severity
+            # Dark Bar Chart
             sev_counts = df['Severity'].value_counts().reset_index()
             fig_sev = px.bar(sev_counts, x='Severity', y='count', 
                             color='Severity',
-                            color_discrete_map={'Critical': '#EF553B', 'High': '#FFA15A', '3 - Medium (P3)': '#FECB52'})
-            st.plotly_chart(fig_sev, use_container_width=True)
-
-        st.markdown("---")
-
-        # --- THE "EXCITING" DURATION OVERVIEW ---
-        st.subheader("⏳ Top 5 Longest Running Items (Aging Report)")
-        # Sort by Days_Open and take top 5
-        aging_df = df[df['Status'] != 'Done'].sort_values(by='Days_Open', ascending=False).head(5)
-        
-        fig_duration = px.bar(aging_df, 
-                             x='Days_Open', 
-                             y='Item', 
-                             orientation='h',
-                             text='Duration',
-                             labels={'Days_Open': 'Days Open', 'Item': 'Task Name'},
-                             color='Days_Open',
-                             color_continuous_scale='Reds')
-        fig_duration.update_layout(yaxis={'categoryorder':'total ascending'})
-        st.plotly_chart(fig_duration, use_container_width=True)
-
-        # Full Data List
-        with st.expander("See All Project Details"):
-            st.dataframe(df.drop(columns=['Days_Open']), use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Make sure your Excel sheet is named 'Sheet1'. Error: {e}")
-else:
-    st.info("👆 Please upload the 'Track with IT.xlsx' file to generate the executive overview.")
+                            template="plotly_dark",
+                            color_discrete_map={'Critical': '#FF4B4B', 'High': '#FFAA00', '3 - Medium (P3)': '#00CC96'})
+            st.
