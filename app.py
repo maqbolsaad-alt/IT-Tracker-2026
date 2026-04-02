@@ -3,97 +3,81 @@ import pandas as pd
 import plotly.express as px
 import re
 
-# 1. Page Configuration
+# Page config
 st.set_page_config(page_title="Executive IT Dashboard", layout="wide")
 
-# 2. Force Dark Mode Styling (Fixed the typo here)
-st.markdown("""
-    <style>
-    .stApp {
-        background-color: #0E1117;
-        color: #FFFFFF;
-    }
-    [data-testid="stMetricValue"] {
-        color: #00CC96;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+st.title("🚀 Executive IT Tracking Overview")
 
-st.title("🌙 Executive IT Overview")
-
-uploaded_file = st.file_uploader("Upload your 'Track with IT.xlsx' file", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload your Excel file", type=["xlsx"])
 
 if uploaded_file:
     try:
-        # Load Data
         df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
         df.columns = df.columns.str.strip()
 
-        # --- Helper Function to calculate Days ---
-        def parse_to_days(text):
-            if pd.isna(text) or str(text).strip() == "" or str(text).strip() == "-":
-                return 0
+        # --- DATA PROCESSING FOR DURATION ---
+        # We convert "X weeks Y days" into a number so we can make a chart
+        def parse_duration(text):
+            if pd.isna(text) or text == "": return 0
             weeks = re.search(r'(\d+)\s*week', str(text))
             days = re.search(r'(\d+)\s*day', str(text))
-            total = (int(weeks.group(1)) * 7 if weeks else 0) + (int(days.group(1)) if days else 0)
-            return total
+            total_days = (int(weeks.group(1)) * 7 if weeks else 0) + (int(days.group(1)) if days else 0)
+            return total_days
 
-        df['Days_Total'] = df['Duration'].apply(parse_to_days)
+        df['Days_Open'] = df['Duration'].apply(parse_duration)
 
-        # --- KPI Row ---
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Total Items", len(df))
-        m2.metric("Critical", len(df[df['Severity'] == 'Critical']))
-        m3.metric("Pending", len(df[df['Status'] == 'Pending']))
-        
-        # Calculate Average Age
-        active_items = df[df['Days_Total'] > 0]
-        avg_days = int(active_items['Days_Total'].mean()) if not active_items.empty else 0
-        m4.metric("Avg. Age (Days)", avg_days)
+        # --- TOP LEVEL KPIs ---
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Total Items", len(df))
+        kpi2.metric("Critical Issues", len(df[df['Severity'] == 'Critical']))
+        kpi3.metric("Avg. Age (Days)", int(df[df['Days_Open'] > 0]['Days_Open'].mean()))
+        kpi4.metric("Oldest Ticket (Days)", df['Days_Open'].max())
 
-        st.divider()
+        st.markdown("---")
 
-        # --- Charts Row ---
-        left, right = st.columns(2)
+        # --- CHARTS ROW ---
+        col_left, col_right = st.columns(2)
 
-        with left:
-            st.subheader("📋 Status (Donut)")
+        with col_left:
+            st.subheader("📋 Status Distribution")
+            # Donut Chart for Status
             fig_status = px.pie(df, names='Status', hole=0.6, 
-                               template="plotly_dark",
-                               color_discrete_sequence=px.colors.qualitative.Pastel)
+                               color_discrete_sequence=px.colors.qualitative.Safe)
+            fig_status.update_traces(textinfo='percent+label')
             st.plotly_chart(fig_status, use_container_width=True)
 
-        with right:
+        with col_right:
             st.subheader("⚠️ Severity Breakdown")
-            # Creating bar chart for Severity
+            # Bar Chart for Severity
             sev_counts = df['Severity'].value_counts().reset_index()
             fig_sev = px.bar(sev_counts, x='Severity', y='count', 
                             color='Severity',
-                            template="plotly_dark",
-                            color_discrete_map={'Critical': '#FF4B4B', 'High': '#FFAA00', 'Medium': '#00CC96'})
+                            color_discrete_map={'Critical': '#EF553B', 'High': '#FFA15A', '3 - Medium (P3)': '#FECB52'})
             st.plotly_chart(fig_sev, use_container_width=True)
 
-        st.divider()
+        st.markdown("---")
 
-        # --- Aging Tickets Overview ---
-        st.subheader("⏳ Aging Report (Longest Running Active Items)")
-        active_df = df[df['Status'] != 'Done'].sort_values(by='Days_Total', ascending=False).head(5)
+        # --- THE "EXCITING" DURATION OVERVIEW ---
+        st.subheader("⏳ Top 5 Longest Running Items (Aging Report)")
+        # Sort by Days_Open and take top 5
+        aging_df = df[df['Status'] != 'Done'].sort_values(by='Days_Open', ascending=False).head(5)
         
-        if not active_df.empty:
-            fig_dur = px.bar(active_df, 
-                            x='Days_Total', 
-                            y='Item', 
-                            orientation='h',
-                            text='Duration',
-                            template="plotly_dark",
-                            color='Days_Total',
-                            color_continuous_scale='Reds')
-            fig_dur.update_layout(yaxis={'categoryorder':'total ascending'})
-            st.plotly_chart(fig_dur, use_container_width=True)
-        else:
-            st.success("No active pending items found!")
+        fig_duration = px.bar(aging_df, 
+                             x='Days_Open', 
+                             y='Item', 
+                             orientation='h',
+                             text='Duration',
+                             labels={'Days_Open': 'Days Open', 'Item': 'Task Name'},
+                             color='Days_Open',
+                             color_continuous_scale='Reds')
+        fig_duration.update_layout(yaxis={'categoryorder':'total ascending'})
+        st.plotly_chart(fig_duration, use_container_width=True)
+
+        # Full Data List
+        with st.expander("See All Project Details"):
+            st.dataframe(df.drop(columns=['Days_Open']), use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error reading file: {e}")
+        st.error(f"Make sure your Excel sheet is named 'Sheet1'. Error: {e}")
 else:
-    st.info("Awaiting file upload. Please select your IT Tracker Excel file.")
+    st.info("👆 Please upload the 'Track with IT.xlsx' file to generate the executive overview.")
