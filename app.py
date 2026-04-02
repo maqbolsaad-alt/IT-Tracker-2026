@@ -3,10 +3,10 @@ import pandas as pd
 import plotly.express as px
 import re
 
-# 1. Page Configuration & Dark Theme Setup
+# 1. Page Configuration
 st.set_page_config(page_title="Executive IT Dashboard", layout="wide")
 
-# Force Dark Mode Styling
+# 2. Force Dark Mode Styling (Fixed the typo here)
 st.markdown("""
     <style>
     .stApp {
@@ -17,7 +17,7 @@ st.markdown("""
         color: #00CC96;
     }
     </style>
-    """, unsafe_allow_index=True)
+    """, unsafe_allow_html=True)
 
 st.title("🌙 Executive IT Overview")
 
@@ -33,7 +33,6 @@ if uploaded_file:
         def parse_to_days(text):
             if pd.isna(text) or str(text).strip() == "" or str(text).strip() == "-":
                 return 0
-            # Extracts numbers from "X weeks Y days"
             weeks = re.search(r'(\d+)\s*week', str(text))
             days = re.search(r'(\d+)\s*day', str(text))
             total = (int(weeks.group(1)) * 7 if weeks else 0) + (int(days.group(1)) if days else 0)
@@ -46,8 +45,10 @@ if uploaded_file:
         m1.metric("Total Items", len(df))
         m2.metric("Critical", len(df[df['Severity'] == 'Critical']))
         m3.metric("Pending", len(df[df['Status'] == 'Pending']))
-        # Filter out 0s for average (items with no date/duration yet)
-        avg_days = int(df[df['Days_Total'] > 0]['Days_Total'].mean()) if not df[df['Days_Total'] > 0].empty else 0
+        
+        # Calculate Average Age
+        active_items = df[df['Days_Total'] > 0]
+        avg_days = int(active_items['Days_Total'].mean()) if not active_items.empty else 0
         m4.metric("Avg. Age (Days)", avg_days)
 
         st.divider()
@@ -57,29 +58,25 @@ if uploaded_file:
 
         with left:
             st.subheader("📋 Status (Donut)")
-            # Create the Donut Chart
             fig_status = px.pie(df, names='Status', hole=0.6, 
                                template="plotly_dark",
                                color_discrete_sequence=px.colors.qualitative.Pastel)
-            fig_status.update_layout(showlegend=True)
             st.plotly_chart(fig_status, use_container_width=True)
 
         with right:
             st.subheader("⚠️ Severity Breakdown")
-            # Create the Severity Bar Chart
-            sev_order = ['Critical', 'High', '3 - Medium (P3)']
-            sev_counts = df['Severity'].value_counts().reindex(sev_order).reset_index()
+            # Creating bar chart for Severity
+            sev_counts = df['Severity'].value_counts().reset_index()
             fig_sev = px.bar(sev_counts, x='Severity', y='count', 
                             color='Severity',
                             template="plotly_dark",
-                            color_discrete_map={'Critical': '#FF4B4B', 'High': '#FFAA00', '3 - Medium (P3)': '#00CC96'})
+                            color_discrete_map={'Critical': '#FF4B4B', 'High': '#FFAA00', 'Medium': '#00CC96'})
             st.plotly_chart(fig_sev, use_container_width=True)
 
         st.divider()
 
-        # --- Duration / Aging Overview ---
+        # --- Aging Tickets Overview ---
         st.subheader("⏳ Aging Report (Longest Running Active Items)")
-        # Show only Pending/In Progress items, sorted by longest duration
         active_df = df[df['Status'] != 'Done'].sort_values(by='Days_Total', ascending=False).head(5)
         
         if not active_df.empty:
@@ -94,9 +91,9 @@ if uploaded_file:
             fig_dur.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_dur, use_container_width=True)
         else:
-            st.success("All items are Done! No aging tickets.")
+            st.success("No active pending items found!")
 
     except Exception as e:
-        st.error(f"Make sure your Excel sheet is named 'Sheet1'. Error: {e}")
+        st.error(f"Error reading file: {e}")
 else:
     st.info("Awaiting file upload. Please select your IT Tracker Excel file.")
