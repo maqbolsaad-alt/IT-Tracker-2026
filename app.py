@@ -71,4 +71,58 @@ if uploaded_file:
 
             st.markdown("---")
 
-            # --- ROW 1: SYSTEM
+            # --- ROW 1: SYSTEM & STATUS ---
+            col_sys, col_stat = st.columns(2)
+
+            with col_sys:
+                st.subheader("🖥️ Workload by System")
+                sys_counts = filtered_df['System'].value_counts().reset_index()
+                fig_sys = px.bar(sys_counts, x='System', y='count', 
+                                 color='System', text_auto=True,
+                                 color_discrete_sequence=px.colors.qualitative.Bold)
+                st.plotly_chart(fig_sys, use_container_width=True)
+
+            with col_stat:
+                st.subheader("📋 Status Distribution")
+                fig_status = px.pie(filtered_df, names='Status', hole=0.5, 
+                                    color_discrete_sequence=px.colors.qualitative.Pastel)
+                fig_status.update_traces(textinfo='percent+label')
+                st.plotly_chart(fig_status, use_container_width=True)
+
+            st.markdown("---")
+
+            # --- ROW 2: SEVERITY & AGING ---
+            col_sev, col_age = st.columns([1, 2])
+
+            with col_sev:
+                st.subheader("⚠️ Severity Breakdown")
+                sev_counts = filtered_df['Severity'].value_counts().reset_index()
+                fig_sev = px.bar(sev_counts, y='Severity', x='count', 
+                                orientation='h', color='Severity',
+                                color_discrete_map={'Critical': '#D62728', 'High': '#FF7F0E', '3 - Medium (P3)': '#FFBB78'})
+                st.plotly_chart(fig_sev, use_container_width=True)
+
+            with col_age:
+                st.subheader("⏳ Top 5 Aging Items")
+                # Filter out 'Done' items for aging report
+                aging_df = filtered_df[~filtered_df['Status'].str.contains('Done', case=False, na=False)]
+                aging_df = aging_df.sort_values(by='Days_Open', ascending=False).head(5)
+                
+                fig_duration = px.bar(aging_df, 
+                                     x='Days_Open', 
+                                     y='Item', 
+                                     orientation='h',
+                                     text='System',
+                                     color='Days_Open',
+                                     color_continuous_scale='Reds')
+                fig_duration.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_duration, use_container_width=True)
+
+            # Full Data List
+            with st.expander("🔍 View Raw Filtered Data"):
+                st.dataframe(filtered_df.drop(columns=['Days_Open']), use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error: {e}")
+else:
+    st.info("👆 Please upload the Excel file to begin.")
