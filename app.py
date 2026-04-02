@@ -2,51 +2,47 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-st.set_page_config(page_title="IT Tracking Dashboard", layout="wide")
+st.set_page_config(page_title="IT Dashboard", layout="wide")
 
-st.title("📊 Enhanced IT Tracking Dashboard")
-st.markdown("Upload your Excel file to see updated Status and Duration metrics.")
+st.title("📊 IT Operations Dashboard")
 
-uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+uploaded_file = st.file_uploader("Upload Track with IT.xlsx", type=["xlsx"])
 
 if uploaded_file:
-    try:
-        # Read the file
-        df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
-        df.columns = df.columns.str.strip()
+    df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
+    df.columns = df.columns.str.strip()
 
-        # --- Metrics Row ---
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Items", len(df))
-        col2.metric("Critical Items", len(df[df['Severity'] == 'Critical']))
-        col3.metric("Pending", len(df[df['Status'] == 'Pending']))
-        col4.metric("In Progress", len(df[df['Status'] == 'In Progress']))
+    # Top Metrics
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Tickets", len(df))
+    col2.metric("Critical", len(df[df['Severity'] == 'Critical']))
+    col3.metric("Pending", len(df[df['Status'] == 'Pending']))
 
-        st.divider()
+    st.divider()
 
-        # --- Charts Row ---
-        left_col, right_col = st.columns(2)
-        
-        with left_col:
-            st.subheader("Status Distribution")
-            fig_status = px.pie(df, names='Status', hole=0.3, color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(fig_status, use_container_width=True)
+    # Charts Row
+    chart_col1, chart_col2 = st.columns(2)
 
-        with right_col:
-            st.subheader("Duration: Top 5 Longest Items")
-            # This shows the items that have been open the longest based on your 'Duration' column
-            if 'Duration' in df.columns:
-                # We sort by the duration text (or you can view the top 5 rows)
-                duration_df = df[['Number', 'Item', 'Duration', 'Status']].dropna().head(5)
-                st.table(duration_df)
-            else:
-                st.warning("No 'Duration' column found in Excel.")
+    with chart_col1:
+        st.subheader("Status (Done vs Pending)")
+        # Creating the Donut Chart
+        fig_donut = px.pie(df, names='Status', hole=0.6, 
+                           color_discrete_sequence=['#00CC96', '#636EFA', '#EF553B'])
+        st.plotly_chart(fig_donut, use_container_width=True)
 
-        # --- Detailed Table ---
-        st.subheader("Full Data View")
-        st.dataframe(df, use_container_width=True)
+    with chart_col2:
+        st.subheader("Tickets by Severity")
+        # Creating the Severity Bar Chart
+        sev_data = df['Severity'].value_counts().reset_index()
+        fig_sev = px.bar(sev_data, x='Severity', y='count', color='Severity',
+                         color_discrete_map={'Critical': 'red', 'High': 'orange', 'Medium': 'yellow'})
+        st.plotly_chart(fig_sev, use_container_width=True)
 
-    except Exception as e:
-        st.error(f"Error: {e}")
+    st.divider()
+    
+    # Duration Section
+    st.subheader("Top Items by Duration")
+    st.table(df[['Number', 'Item', 'Duration', 'Status']].head(10))
+
 else:
-    st.info("Waiting for Excel upload...")
+    st.info("Please upload your Excel file to view the Donut and Severity charts.")
