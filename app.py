@@ -16,24 +16,26 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
         df.columns = df.columns.str.strip()
 
-        # --- DATA CLEANING & FORWARD FILLING ---
-        # Sub-categories in Excel often leave parent columns blank below them.
-        # We forward-fill these key columns so every sub-category inherits 
-        # its parent's Domain, Type, Status, Duration, etc.
-        cols_to_ffill = ['Domain', 'Type', 'Number', 'Category', 'Status', 'Severity', 'Raised Date', "Today'time", 'Duration']
+        # ==============================================================
+        # 1. THE SUB-CATEGORY FIX (FORWARD FILLING)
+        # This drags the Parent's 'Domain', 'Type', 'Status', and 'Duration'
+        # down into the blank rows of the Sub-Categories.
+        # ==============================================================
+        cols_to_fill = ['Domain', 'Type', 'Number', 'Category', 'Status', 'Severity', 'Raised Date', "Today'time", 'Duration']
+        # Only fill columns that actually exist in the file to avoid errors
+        cols_to_fill = [c for c in cols_to_fill if c in df.columns]
         
-        # Ensure we only try to fill columns that exist to prevent errors
-        cols_to_ffill = [c for c in cols_to_ffill if c in df.columns]
-        df[cols_to_ffill] = df[cols_to_ffill].ffill()
+        # This applies the fill
+        df[cols_to_fill] = df[cols_to_fill].ffill()
 
-        # Now filter out any rows that genuinely have no status (empty bottom rows)
+        # Now we filter out any entirely blank rows at the very bottom of the sheet
         df_clean = df.dropna(subset=['Status']).copy()
 
         # Create an 'Item' column for the charts
-        # Priority: Sub-Category. If it is empty or '-', fallback to Category.
         def identify_item(row):
             cat = str(row.get('Category', '')).strip()
             sub = str(row.get('Sub-Category', '')).strip()
+            # If there is a sub-category, use it. Otherwise, use the Category.
             if sub in ["", "-", "nan"]:
                 return cat
             return sub
@@ -53,7 +55,7 @@ if uploaded_file:
         # --- TOP LEVEL KPIs ---
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         
-        # The Total Items will now correctly reflect all Sub-Categories
+        # This will now count the sub-tasks individually
         kpi1.metric("Total Items (Inc. Sub-Tasks)", len(df_clean))
         
         crit_count = len(df_clean[df_clean['Severity'].str.contains('Critical', case=False, na=False)])
@@ -86,10 +88,14 @@ if uploaded_file:
 
         st.markdown("---")
 
-        # --- AGING REPORT ---
-        st.subheader("⏳ Top 5 Longest Running Items (Aging Report)")
-        # Filter out 'Closed' or 'Done' items, ignoring case
-        aging_df = df_clean[~df_clean['Status'].str.contains('Closed|Done', case=False, na=False)].sort_values(by='Days_Open', ascending=False).head(5)
+        # ==============================================================
+        # 2. TOP 10 LONGEST RUNNING ITEMS (AGING REPORT)
+        # Changed the subheader and the .head(10) method below
+        # ==============================================================
+        st.subheader("⏳ Top 10 Longest Running Items (Aging Report)")
+        
+        # Filter out Closed/Done, sort by oldest, and take top 10
+        aging_df = df_clean[~df_clean['Status'].str.contains('Closed|Done', case=False, na=False)].sort_values(by='Days_Open', ascending=False).head(10)
         
         fig_duration = px.bar(aging_df, 
                              x='Days_Open', 
@@ -99,15 +105,10 @@ if uploaded_file:
                              labels={'Days_Open': 'Days Open', 'Item': 'Task Name'},
                              color='Days_Open',
                              color_continuous_scale='Reds')
+        
         fig_duration.update_layout(yaxis={'categoryorder':'total ascending'})
         st.plotly_chart(fig_duration, use_container_width=True)
 
         # Full Data List
         with st.expander("See All Project Details"):
-            # Exclude the mathematical column from the display for cleaner UI
-            st.dataframe(df_clean.drop(columns=['Days_Open'], errors='ignore'), use_container_width=True)
-
-    except Exception as e:
-        st.error(f"Error processing file: {e}")
-else:
-    st.info("👆 Please upload the 'Track with IT.xlsx' file to generate the overview.")
+            st.dataframe(
