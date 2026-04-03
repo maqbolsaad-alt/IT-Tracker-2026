@@ -16,16 +16,16 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file, sheet_name="Sheet1")
         df.columns = df.columns.str.strip()
 
-        # 2. Forward Fill to link Sub-Categories to their Parent info
-        # We focus on the requested fields: Domain, Type, Category, Status, Duration
-        cols_to_fill = ['Domain', 'Type', 'Category', 'Status', 'Duration', 'Severity']
+        # 2. Forward Fill parent data into sub-category rows
+        # Focus columns: Domain, Type, Category, Status, Duration
+        cols_to_fill = ['Domain', 'Type', 'Category', 'Status', 'Duration']
         cols_to_fill = [c for c in cols_to_fill if c in df.columns]
         df[cols_to_fill] = df[cols_to_fill].ffill()
 
         # 3. Data Cleaning
         df_clean = df.dropna(subset=['Category']).copy()
 
-        # Parse Duration into Days
+        # Parse Duration into Days for mathematical sorting
         def parse_duration(text):
             if pd.isna(text) or str(text).strip() in ["", "-"]: return 0
             weeks = re.search(r'(\d+)\s*week', str(text))
@@ -35,65 +35,78 @@ if uploaded_file:
         df_clean['Days_Open'] = df_clean['Duration'].apply(parse_duration)
 
         # --- KPI ROW ---
-        kpi1, kpi2 = st.columns(2)
+        kpi1, kpi2, kpi3 = st.columns(3)
         
-        # Total Tasks = Unique Categories (Deduplicated)
-        total_unique_categories = df_clean['Category'].nunique()
-        kpi1.metric("Total Unique Projects/Categories", total_unique_categories)
+        # Total Tasks = Unique Categories (De-duplicated)
+        total_unique = df_clean['Category'].nunique()
+        kpi1.metric("Total Unique Categories", total_unique)
         
         # Average Age across all items
         avg_age = int(df_clean[df_clean['Days_Open'] > 0]['Days_Open'].mean()) if not df_clean.empty else 0
-        kpi2.metric("Average Cycle Time (Days)", avg_age)
+        kpi2.metric("Avg. Project Age (Days)", avg_age)
+
+        # Task Count by Type (Summary)
+        most_common_type = df_clean['Type'].mode()[0] if not df_clean.empty else "N/A"
+        kpi3.metric("Primary Type", most_common_type)
 
         st.markdown("---")
 
-        # --- DISTRIBUTION CHARTS ---
-        col1, col2 = st.columns(2)
+        # --- DISTRIBUTION CHARTS (Status, Domain, Type) ---
+        col1, col2, col3 = st.columns(3)
         
         with col1:
-            st.subheader("📊 Status Overview")
-            fig_status = px.pie(df_clean, names='Status', hole=0.5, 
-                               color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.subheader("📊 Status")
+            fig_status = px.pie(df_clean, names='Status', hole=0.4, color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(fig_status, use_container_width=True)
             
         with col2:
-            st.subheader("🏢 Domain Distribution")
-            # Count unique categories per domain
-            domain_counts = df_clean.groupby('Domain')['Category'].nunique().reset_index()
-            fig_dom = px.bar(domain_counts, x='Domain', y='Category', 
-                             labels={'Category': 'Unique Projects'},
-                             color='Domain', color_discrete_sequence=px.colors.qualitative.Safe)
+            st.subheader("🏢 Domain")
+            dom_counts = df_clean.groupby('Domain')['Category'].nunique().reset_index()
+            fig_dom = px.bar(dom_counts, x='Domain', y='Category', color='Domain', labels={'Category': 'Count'})
             st.plotly_chart(fig_dom, use_container_width=True)
+
+        with col3:
+            st.subheader("🔧 Type")
+            type_counts = df_clean.groupby('Type')['Category'].nunique().reset_index()
+            fig_type = px.pie(type_counts, names='Type', values='Category', hole=0.4)
+            st.plotly_chart(fig_type, use_container_width=True)
 
         st.markdown("---")
 
-        # --- AGING REPORT (TOP 10 CATEGORIES) ---
-        # "Make it for all" - shows top 10 durations regardless of Status
-        st.subheader("⏳ Top 10 Longest Running Categories (Aging Report)")
+        # ==============================================================
+        # 4. RUNNING CATEGORIES (AGING REPORT) - ALL CATEGORIES
+        # ==============================================================
+        st.subheader("⏳ Running Categories (Aging Report) - All Items")
         
+        # Group by Category and get the max days open
+        # We include Domain and Type so they show up in the hover/color
         cat_aging = df_clean.groupby(['Category', 'Domain', 'Type'])['Days_Open'].max().reset_index()
-        cat_aging = cat_aging.sort_values(by='Days_Open', ascending=False).head(10)
+        cat_aging = cat_aging.sort_values(by='Days_Open', ascending=False)
         
+        # Adjust height based on number of categories so it doesn't look squashed
+        chart_height = 400 + (len(cat_aging) * 20) 
+
         fig_aging = px.bar(cat_aging, 
                           x='Days_Open', 
                           y='Category', 
                           orientation='h',
                           color='Domain',
                           text='Days_Open',
-                          labels={'Days_Open': 'Days', 'Category': 'Category'})
+                          height=chart_height,
+                          labels={'Days_Open': 'Days', 'Category': 'Category'},
+                          title="Full Aging List by Category")
         
         fig_aging.update_layout(yaxis={'categoryorder':'total ascending'})
-        fig_aging.update_traces(texttemplate='%{text} Days', textposition='outside')
+        fig_aging.update_traces(texttemplate='%{text} d', textposition='outside')
         st.plotly_chart(fig_aging, use_container_width=True)
 
-        # --- SIMPLIFIED DATA TABLE ---
-        with st.expander("🔍 View Simplified Data List"):
-            # Only include the 4 requested columns + Category for context
+        # --- DATA LIST ---
+        with st.expander("🔍 Detailed Data Table (Status, Domain, Type, Duration)"):
             display_cols = ['Category', 'Status', 'Domain', 'Type', 'Duration']
-            available_cols = [c for c in display_cols if c in df_clean.columns]
-            st.dataframe(df_clean[available_cols].drop_duplicates(), use_container_width=True)
+            # Only showing unique combinations of Category + Status
+            st.dataframe(df_clean[display_cols].drop_duplicates(), use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Analysis Error: {e}")
 else:
-    st.info("Please upload the Excel file to view the simplified dashboard.")
+    st.info("Please upload the 'Track with IT.xlsx' file.")
