@@ -111,4 +111,9 @@ if uploaded_file:
 
         # Full Data List
         with st.expander("See All Project Details"):
-            st.dataframe(
+            st.dataframe(df_clean.drop(columns=['Days_Open'], errors='ignore'), use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error processing file: {e}")
+else:
+    st.info("👆 Please upload the 'Track with IT.xlsx' file to generate the overview.")
