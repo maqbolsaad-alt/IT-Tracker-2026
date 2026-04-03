@@ -58,8 +58,8 @@ if uploaded_file:
         
         with col1:
             st.subheader("📊 Status Overview")
-            # Specific Colors: Open = Yellow, Closed = Green
-            status_colors = {'Open': '#FFD700', 'Closed': '#228B22'}
+            # UPDATED COLORS: Open = Orange, Closed = Green
+            status_colors = {'Open': '#FFA500', 'Closed': '#228B22'}
             fig_status = px.pie(df_clean, names='Status', hole=0.4,
                                color='Status',
                                color_discrete_map=status_colors)
@@ -67,7 +67,6 @@ if uploaded_file:
             
         with col2:
             st.subheader("⚠️ Severity Breakdown")
-            # Standard severity colors
             sev_colors = {'Critical': '#D62728', 'High': '#FF7F0E', 'Medium': '#F4D03F', 'Low': '#2CA02C'}
             fig_sev = px.bar(df_clean['Severity'].value_counts().reset_index(), 
                              x='Severity', y='count', color='Severity',
@@ -89,18 +88,18 @@ if uploaded_file:
         st.markdown("---")
 
         # ==============================================================
-        # 4. RUNNING CATEGORIES (AGING REPORT) - BY WEEKS (ALL)
+        # 4. RUNNING CATEGORIES (AGING REPORT) - ALL CATEGORIES
         # ==============================================================
         st.subheader("⏳ Running Categories (Aging Report) - All Items")
         
         # Aggregate max weeks per category
         cat_aging = df_clean.groupby(['Category', 'Domain', 'Severity'])['Weeks_Open'].max().reset_index()
         
-        # Remove 0 weeks
+        # REMOVE 0 WEEKS
         cat_aging = cat_aging[cat_aging['Weeks_Open'] > 0]
         cat_aging = cat_aging.sort_values(by='Weeks_Open', ascending=True)
         
-        # Adjust height based on volume
+        # Dynamic height for the bar chart
         dynamic_height = 400 + (len(cat_aging) * 25)
 
         fig_aging = px.bar(cat_aging, 
@@ -116,7 +115,7 @@ if uploaded_file:
         fig_aging.update_traces(texttemplate='%{text} wks', textposition='outside')
         st.plotly_chart(fig_aging, use_container_width=True)
 
-        # --- DETAILED DATA ---
+        # --- DATA LIST ---
         with st.expander("🔍 Detailed View (Status, Domain, Type, Duration, Severity)"):
             display_cols = ['Category', 'Status', 'Domain', 'Type', 'Duration', 'Severity']
             st.dataframe(df_clean[display_cols].drop_duplicates(), use_container_width=True)
@@ -124,4 +123,4 @@ if uploaded_file:
     except Exception as e:
         st.error(f"Error: {e}")
 else:
-    st.info("Please upload the file to generate the executive report.")
+    st.info("Please upload the 'Track with IT.xlsx' file.")
