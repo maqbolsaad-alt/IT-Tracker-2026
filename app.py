@@ -43,9 +43,9 @@ def apply_executive_theme(fig):
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=30, b=10, l=10, r=10),
+        margin=dict(t=40, b=10, l=10, r=10),
         font=dict(family="Inter", size=12),
-        colorway=["#58a6ff", "#2ea043", "#f85149", "#d29922"]
+        colorway=["#58a6ff", "#2ea043", "#f85149", "#d29922", "#79c0ff", "#aff5b4"]
     )
     return fig
 
@@ -62,7 +62,7 @@ if uploaded_file:
         df[['Domain', 'Category', 'Status', 'Severity']] = df[['Domain', 'Category', 'Status', 'Severity']].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
 
-        # --- ROW 1: THE KPIs (Match your screenshot style) ---
+        # --- ROW 1: THE KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
         
         with k1:
@@ -71,13 +71,14 @@ if uploaded_file:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure Rate</div><div class='metric-val'>{(closed/len(df)*100):.1f}%</div></div>", unsafe_allow_html=True)
+            rate = (closed/len(df)*100) if len(df) > 0 else 0
+            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure Rate</div><div class='metric-val'>{rate:.1f}%</div></div>", unsafe_allow_html=True)
         with k4:
             crit = len(df[df['Severity'].str.contains('Critical', na=False)])
             border = "#f85149" if crit > 0 else "#58a6ff"
             st.markdown(f"<div class='metric-container' style='border-left-color:{border}'><div class='metric-lbl'>Critical Risks</div><div class='metric-val'>{crit}</div></div>", unsafe_allow_html=True)
         with k5:
-            avg_w = df[df['Wks']>0]['Wks'].mean()
+            avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
         # --- ROW 2: SEVERITY & LONGEVITY ANALYSIS ---
@@ -85,7 +86,6 @@ if uploaded_file:
         c1, c2 = st.columns([1, 1])
 
         with c1:
-            # Severity vs Longevity (Max Weeks per Category)
             sev_data = df.groupby(['Category', 'Severity'])['Wks'].max().reset_index()
             fig_sev = px.bar(sev_data, x='Wks', y='Category', color='Severity',
                              title="Max Longevity by Severity",
@@ -94,21 +94,37 @@ if uploaded_file:
             st.plotly_chart(apply_executive_theme(fig_sev), use_container_width=True)
 
         with c2:
-            # Status Volume breakdown
             status_counts = df.groupby('Status').size().reset_index(name='Count')
             fig_status = px.pie(status_counts, values='Count', names='Status', hole=0.6,
                                 title="Delivery Pipeline Status")
             st.plotly_chart(apply_executive_theme(fig_status), use_container_width=True)
 
-        # --- ROW 3: DETAILED LEDGER (The "One Picture" Audit) ---
+        # --- ROW 3: DETAILED OPERATIONS LEDGER (WITH DONUTS) ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
         
-        # Custom styling for the table to highlight severity
+        # New Donut Section: Domain and Severity side-by-side
+        d1, d2 = st.columns(2)
+        
+        with d1:
+            domain_counts = df.groupby('Domain').size().reset_index(name='Count')
+            fig_dom = px.pie(domain_counts, values='Count', names='Domain', hole=0.7, 
+                             title="Incident Volume by Domain")
+            st.plotly_chart(apply_executive_theme(fig_dom), use_container_width=True)
+            
+        with d2:
+            severity_counts = df.groupby('Severity').size().reset_index(name='Count')
+            fig_sev_donut = px.pie(severity_counts, values='Count', names='Severity', hole=0.7,
+                                   title="Risk Distribution (Severity)",
+                                   color='Severity',
+                                   color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
+            st.plotly_chart(apply_executive_theme(fig_sev_donut), use_container_width=True)
+
+        # Table Section
         def color_severity(val):
-            color = '#30363d'
+            color = '#8b949e'
             if val == 'Critical': color = '#f85149'
             elif val == 'High': color = '#d29922'
-            elif val == 'Closed': color = '#2ea043'
+            elif val == 'Closed' or val == 'Complete': color = '#2ea043'
             return f'color: {color}; font-weight: bold'
 
         st.dataframe(
