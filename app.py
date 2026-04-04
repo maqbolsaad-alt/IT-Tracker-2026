@@ -11,6 +11,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
+    /* High-Density Metric Cards */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -22,10 +23,11 @@ st.markdown("""
     .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
     .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
     
+    /* Section Headers */
     .section-box {
         padding: 10px 0px;
         border-bottom: 1px solid #30363d;
-        margin-top: 20px;
+        margin-top: 25px;
         margin-bottom: 20px;
         color: #58a6ff;
         font-weight: 800;
@@ -40,9 +42,10 @@ def apply_executive_theme(fig):
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=40, b=10, l=10, r=10),
+        margin=dict(t=50, b=10, l=10, r=10),
         font=dict(family="Inter", size=12),
-        colorway=["#58a6ff", "#2ea043", "#f85149", "#d29922", "#79c0ff"]
+        showlegend=True,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
     )
     return fig
 
@@ -55,9 +58,9 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Auto-fill hierarchy
-        cols_to_fix = ['Domain', 'Category', 'Status', 'Severity']
-        df[cols_to_fix] = df[cols_to_fix].ffill()
+        # Data Cleaning: Forward fill hierarchy and extract numeric weeks
+        cols_to_fill = ['Domain', 'Category', 'Status', 'Severity']
+        df[cols_to_fill] = df[cols_to_fill].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
 
         # --- ROW 1: THE KPIs ---
@@ -78,29 +81,33 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE THREE DONUTS ---
+        # --- ROW 2: THE TRIPLE DONUTS (Visual Analysis) ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
         d1, d2, d3 = st.columns(3)
         
         with d1:
-            fig1 = px.pie(df, names='Status', hole=0.75, title="Delivery Pipeline Status")
-            fig1.update_traces(textinfo='none')
+            # Chart 1: Delivery Pipeline Status
+            fig1 = px.pie(df, names='Status', hole=0.75, title="Delivery Pipeline Status",
+                          color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
+            fig1.update_traces(textinfo='value+percent', textposition='outside')
             st.plotly_chart(apply_executive_theme(fig1), use_container_width=True)
             
         with d2:
+            # Chart 2: Risk Distribution (Severity)
             fig2 = px.pie(df, names='Severity', hole=0.75, title="Risk Distribution",
                           color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            fig2.update_traces(textinfo='none')
+            fig2.update_traces(textinfo='value+percent', textposition='outside')
             st.plotly_chart(apply_executive_theme(fig2), use_container_width=True)
             
         with d3:
+            # Chart 3: Incident Volume (Domain)
             fig3 = px.pie(df, names='Domain', hole=0.75, title="Incident Volume")
-            fig3.update_traces(textinfo='none')
+            fig3.update_traces(textinfo='value+percent', textposition='outside')
             st.plotly_chart(apply_executive_theme(fig3), use_container_width=True)
 
-        # --- ROW 3: DETAILED LEDGER ---
+        # --- ROW 3: DETAILED OPERATIONS LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
         
         def color_severity(val):
@@ -121,6 +128,6 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"Critical System Error: {e}")
+        st.error(f"Execution Error: {e}")
 else:
-    st.info("System Ready. Upload Data Feed.")
+    st.info("System Ready. Please upload the 'IT Operations' Excel file.")
