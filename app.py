@@ -34,34 +34,34 @@ st.markdown("""
         text-transform: uppercase;
         font-size: 13px;
     }
-    
-    /* Custom spacing for the file uploader */
-    .stFileUploader { margin-bottom: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE ---
+# --- 2. CHART STYLING ENGINE (Fixed Overlap) ---
 def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=80, b=20, l=10, r=10),
-        height=400,
+        # Increased top margin to t=120 to separate Title from Legend
+        margin=dict(t=120, b=20, l=10, r=10),
+        height=450,
         showlegend=True,
         legend=dict(
             orientation="h",
-            yanchor="bottom",
-            y=1.1,
+            yanchor="top",
+            y=0.92,        # Positioned Legend below the Title
             xanchor="center",
             x=0.5,
-            font=dict(size=10)
+            font=dict(size=10, color="#8b949e")
         ),
         title=dict(
-            text=title,
+            text=f"<b>{title}</b>",
             x=0.5,
+            y=0.98,        # Positioned Title at the absolute top
             xanchor='center',
-            font=dict(size=16, color='#58a6ff', weight='bold')
+            yanchor='top',
+            font=dict(size=18, color='#58a6ff')
         )
     )
     fig.update_traces(
@@ -82,7 +82,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Cleaning: Forward fill and extract duration
+        # Data Cleaning: Forward fill hierarchy
         cols_to_fill = ['Domain', 'Category', 'Status', 'Severity']
         df[cols_to_fill] = df[cols_to_fill].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
@@ -105,25 +105,22 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE THREE DONUTS (The Organized Layout) ---
+        # --- ROW 2: THE THREE DONUTS ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
         d1, d2, d3 = st.columns(3, gap="large")
         
         with d1:
-            # Chart 1: Delivery Pipeline Status
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
             st.plotly_chart(apply_pro_layout(fig1, "Delivery Pipeline Status"), use_container_width=True)
             
         with d2:
-            # Chart 2: Risk Distribution
             fig2 = px.pie(df, names='Severity', 
                           color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
             st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
             
         with d3:
-            # Chart 3: Incident Volume
             fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
 
@@ -148,6 +145,6 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"System Error: {e}")
+        st.error(f"Execution Error: {e}")
 else:
-    st.info("System Ready. Upload Data Feed to initialize dashboard.")
+    st.info("System Ready. Upload Data Feed.")
