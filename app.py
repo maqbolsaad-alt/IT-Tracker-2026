@@ -2,143 +2,135 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import re
 
-# --- 1. CONFIG & THEME ---
-st.set_page_config(page_title="Ops Intelligence | Command Center", layout="wide", initial_sidebar_state="expanded")
+# --- 1. CONFIG & HUD STYLING ---
+st.set_page_config(page_title="Ops Intelligence | Command Center", layout="wide", initial_sidebar_state="collapsed")
 
-# Unified SaaS Dark Theme CSS
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-    .main { background-color: #05070a; color: #e6edf3; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@400;800&display=swap');
     
-    /* Card Container */
-    .metric-card {
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; }
+    
+    /* Executive Metric Tiles */
+    .metric-tile {
         background: rgba(255, 255, 255, 0.03);
-        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-left: 4px solid #58a6ff;
         padding: 20px;
-        border-radius: 16px;
-        margin-bottom: 10px;
+        border-radius: 8px;
+        text-align: left;
+    }
+    .metric-value { font-size: 28px; font-weight: 800; color: #ffffff; }
+    .metric-label { font-size: 12px; color: #8b949e; text-transform: uppercase; letter-spacing: 1px; }
+    
+    /* Status Tags */
+    .status-tag {
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        font-weight: bold;
+        margin-right: 4px;
     }
     
-    /* Header Styling */
-    .header-text {
+    .section-title {
+        font-size: 14px;
         font-weight: 800;
-        background: linear-gradient(90deg, #58a6ff, #bc8cff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+        color: #58a6ff;
+        margin-bottom: 15px;
+        text-transform: uppercase;
     }
-    
-    /* Hide Streamlit components for cleaner look */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. DATA UTILITIES ---
-def apply_modern_theme(fig):
+# --- 2. THEME UTILS ---
+def apply_hud_theme(fig, title=""):
     fig.update_layout(
+        template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        font_color="#8b949e",
-        title_font_size=16,
-        title_font_color="#ffffff",
-        margin=dict(t=50, b=10, l=10, r=10),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        margin=dict(t=30, b=10, l=10, r=10),
+        height=300,
+        title={'text': title, 'font': {'size': 14, 'color': '#8b949e'}}
     )
-    fig.update_xaxes(showgrid=False, zeroline=False)
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.05)', zeroline=False)
     return fig
 
-# --- 3. SIDEBAR CONTROLS ---
-with st.sidebar:
-    st.markdown("<h2 class='header-text'>🛡️ Control Panel</h2>", unsafe_allow_html=True)
-    uploaded_file = st.file_uploader("Upload Ops Data", type=["xlsx"])
-    st.markdown("---")
-    if uploaded_file:
-        st.success("Data Feed Active")
-    else:
-        st.info("Awaiting Data Feed...")
+# --- 3. APP HEADER ---
+t1, t2 = st.columns([3, 1])
+with t1:
+    st.markdown("<h1 style='margin-bottom:0;'>🛡️ Ops Intel: Executive Brief</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#8b949e;'>Infrastructure Performance & Risk Distribution</p>", unsafe_allow_html=True)
+with t2:
+    uploaded_file = st.file_uploader("Upload Data Feed", type=["xlsx"], label_visibility="collapsed")
 
-# --- 4. MAIN DASHBOARD LOGIC ---
+# --- 4. DASHBOARD CONTENT ---
 if uploaded_file:
     try:
-        # Data Processing
-        df = pd.read_excel(uploaded_file, sheet_name=0)
+        df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Fill hierarchies
-        fill_cols = [c for c in ['Domain', 'Type', 'Category', 'Status', 'Severity'] if c in df.columns]
+        # Data Cleansing
+        fill_cols = ['Domain', 'Type', 'Category', 'Status', 'Severity']
         df[fill_cols] = df[fill_cols].ffill()
-        df = df.dropna(subset=['Category'])
-
-        # Numeric Extraction for Duration
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
-
-        # TOP ROW: EXECUTIVE KPIs
-        k1, k2, k3, k4 = st.columns(4)
+        
+        # --- ROW 1: THE NUMBERS (KPIs) ---
+        k1, k2, k3, k4, k5 = st.columns(5)
         
         with k1:
-            st.metric("Total Scope", f"{df['Category'].nunique()} Units", "+12% vs LY")
+            st.markdown(f"<div class='metric-tile'><div class='metric-label'>Total Units</div><div class='metric-value'>{df['Category'].nunique()}</div></div>", unsafe_allow_html=True)
         with k2:
-            st.metric("Workload", f"{len(df)} Tasks", "Active", delta_color="off")
+            st.markdown(f"<div class='metric-tile'><div class='metric-label'>Active Tasks</div><div class='metric-value'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
-            avg_wks = df[df['Wks']>0]['Wks'].mean()
-            st.metric("Avg Velocity", f"{avg_wks:.1f} Wks", "-0.8 Wks", delta_color="inverse")
+            closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
+            st.markdown(f"<div class='metric-tile'><div class='metric-label'>Closure Rate</div><div class='metric-value'>{(closed/len(df)*100):.1f}%</div></div>", unsafe_allow_html=True)
         with k4:
             crit = len(df[df['Severity'].str.contains('Critical', na=False)])
-            st.metric("Critical Risks", crit, f"{(crit/len(df)*100):.1f}% Total")
+            color = "#ff3131" if crit > 0 else "#58a6ff"
+            st.markdown(f"<div class='metric-tile' style='border-left-color:{color}'><div class='metric-label'>Critical Risks</div><div class='metric-value'>{crit}</div></div>", unsafe_allow_html=True)
+        with k5:
+            avg_age = df[df['Wks']>0]['Wks'].mean()
+            st.markdown(f"<div class='metric-tile'><div class='metric-label'>Avg Longevity</div><div class='metric-value'>{avg_age:.1f}w</div></div>", unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # MIDDLE ROW: DISTRIBUTION & ANALYSIS
-        col_left, col_right = st.columns([1, 1.2])
+        # --- ROW 2: CATEGORY & STATUS SEVERITY ---
+        c1, c2, c3 = st.columns([1.2, 1, 1.2])
 
-        with col_left:
-            st.markdown("<h3 class='header-text'>Strategic Allocation</h3>", unsafe_allow_html=True)
-            # Hierarchical Sunburst
-            fig_sun = px.sunburst(df, path=['Domain', 'Type', 'Status'], 
-                                 color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(apply_modern_theme(fig_sun), use_container_width=True)
+        with c1:
+            st.markdown("<div class='section-title'>Workload by Category</div>", unsafe_allow_html=True)
+            cat_data = df.groupby('Category').size().reset_index(name='Count').sort_values('Count')
+            fig_cat = px.bar(cat_data, x='Count', y='Category', orientation='h', color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_hud_theme(fig_cat), use_container_width=True)
 
-        with col_right:
-            st.markdown("<h3 class='header-text'>Risk vs. Longevity</h3>", unsafe_allow_html=True)
-            # Bar Chart for Aging
-            aging = df.groupby(['Category', 'Severity'])['Wks'].max().reset_index().sort_values('Wks', ascending=True)
-            sev_colors = {'Critical': '#ff4b4b', 'High': '#ffa500', 'Medium': '#f1c40f', 'Low': '#00d4ff'}
-            
-            fig_aging = px.bar(aging.tail(10), x='Wks', y='Category', color='Severity',
-                              orientation='h', color_discrete_map=sev_colors,
-                              template="plotly_dark")
-            st.plotly_chart(apply_modern_theme(fig_aging), use_container_width=True)
+        with c2:
+            st.markdown("<div class='section-title'>Status Distribution</div>", unsafe_allow_html=True)
+            fig_pie = px.pie(df, names='Status', hole=0.7, color_discrete_sequence=['#00D1FF', '#2EB67D', '#FFD700'])
+            st.plotly_chart(apply_hud_theme(fig_pie), use_container_width=True)
 
-        # BOTTOM ROW: HEALTH PROGRESS & RAW DATA
-        st.markdown("---")
-        footer_l, footer_r = st.columns([1.5, 1])
+        with c3:
+            st.markdown("<div class='section-title'>Severity Heatmap</div>", unsafe_allow_html=True)
+            # Matrix of Category vs Severity
+            sev_matrix = df.groupby(['Category', 'Severity']).size().unstack(fill_value=0)
+            fig_heat = px.imshow(sev_matrix, color_continuous_scale='Blues', aspect="auto")
+            st.plotly_chart(apply_hud_theme(fig_heat), use_container_width=True)
+
+        # --- ROW 3: DOMAIN DRILLDOWN ---
+        st.markdown("<div class='section-title'>Domain Operations Detail</div>", unsafe_allow_html=True)
         
-        with footer_l:
-            st.markdown("🔍 **Audit Log**")
-            st.dataframe(df.style.background_gradient(subset=['Wks'], cmap='Blues'), height=250, use_container_width=True)
-            
-        with footer_r:
-            st.markdown("📈 **Fleet Health**")
-            closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
-            prog = (closed / len(df))
-            st.write(f"Overall Completion: {prog*100:.1f}%")
-            st.progress(prog)
-            st.caption("Target: 85% by EOY")
+        # Formatting the dataframe to look like an app
+        st.dataframe(
+            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']],
+            column_config={
+                "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=20, format="%d wks"),
+                "Severity": st.column_config.TextColumn("Risk Level"),
+                "Status": st.column_config.SelectboxColumn("State", options=["Open", "Closed", "Pending"])
+            },
+            use_container_width=True,
+            hide_index=True
+        )
 
     except Exception as e:
-        st.error(f"Error parsing data: {e}")
+        st.error(f"Integrity Error: Ensure Excel columns match 'Domain, Type, Category, Status, Severity, Duration'. Detail: {e}")
 
 else:
-    # EMPTY STATE HERO
-    st.markdown("""
-        <div style="text-align:center; padding:120px 20px; border:2px dashed rgba(88,166,255,0.2); border-radius:30px; background:rgba(88,166,255,0.02)">
-            <h1 style="font-size: 50px;">📡</h1>
-            <h1 class='header-text' style="font-size: 40px; margin-bottom:10px;">Ops Command Center</h1>
-            <p style="color:#8b949e; font-size:18px;">Ready to receive data uplink. Please upload the Excel tracking file via the sidebar.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.info("💡 Dashboard Idle. Please upload the spreadsheet to generate the visual report.")
