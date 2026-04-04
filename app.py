@@ -1,8 +1,71 @@
-# --- ROW 1: THE KPIs (From your screenshot) ---
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+
+# --- 1. HUD & THEME SETUP ---
+st.set_page_config(page_title="Ops Executive Brief", layout="wide", initial_sidebar_state="collapsed")
+
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
+    
+    .metric-container {
+        background: #0d1117;
+        border: 1px solid #30363d;
+        border-left: 5px solid #58a6ff;
+        padding: 18px;
+        border-radius: 12px;
+        margin-bottom: 10px;
+    }
+    .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
+    .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+    
+    .section-box {
+        padding: 10px 0px;
+        border-bottom: 1px solid #30363d;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        color: #58a6ff;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 13px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def apply_executive_theme(fig):
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(t=40, b=10, l=10, r=10),
+        font=dict(family="Inter", size=12),
+        colorway=["#58a6ff", "#2ea043", "#f85149", "#d29922", "#79c0ff"]
+    )
+    return fig
+
+# --- 2. LOGIC & DATA ---
+st.title("🛡️ Ops Intelligence Command")
+uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibility="collapsed")
+
+if uploaded_file:
+    try:
+        df = pd.read_excel(uploaded_file)
+        df.columns = df.columns.str.strip()
+        
+        # Auto-fill hierarchy
+        cols_to_fix = ['Domain', 'Category', 'Status', 'Severity']
+        df[cols_to_fix] = df[cols_to_fix].ffill()
+        df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
+
+        # --- ROW 1: THE KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        with k1: 
+        
+        with k1:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{df['Category'].nunique()}</div></div>", unsafe_allow_html=True)
-        with k2: 
+        with k2:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
@@ -10,24 +73,22 @@
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure Rate</div><div class='metric-val'>{rate:.1f}%</div></div>", unsafe_allow_html=True)
         with k4:
             crit = len(df[df['Severity'].str.contains('Critical', na=False)])
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Critical Risks</div><div class='metric-val'>{crit}</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-container' style='border-left-color:#f85149'><div class='metric-lbl'>Critical Risks</div><div class='metric-val'>{crit}</div></div>", unsafe_allow_html=True)
         with k5:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE THREE DONUTS (Next to each other) ---
+        # --- ROW 2: THE THREE DONUTS ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
         d1, d2, d3 = st.columns(3)
         
         with d1:
-            # Chart 1: Delivery Pipeline
             fig1 = px.pie(df, names='Status', hole=0.75, title="Delivery Pipeline Status")
-            fig1.update_traces(textinfo='none') # Keep it clean/minimal
+            fig1.update_traces(textinfo='none')
             st.plotly_chart(apply_executive_theme(fig1), use_container_width=True)
             
         with d2:
-            # Chart 2: Risk Distribution
             fig2 = px.pie(df, names='Severity', hole=0.75, title="Risk Distribution",
                           color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
@@ -35,7 +96,6 @@
             st.plotly_chart(apply_executive_theme(fig2), use_container_width=True)
             
         with d3:
-            # Chart 3: Incident Volume
             fig3 = px.pie(df, names='Domain', hole=0.75, title="Incident Volume")
             fig3.update_traces(textinfo='none')
             st.plotly_chart(apply_executive_theme(fig3), use_container_width=True)
@@ -59,3 +119,8 @@
             use_container_width=True,
             hide_index=True
         )
+
+    except Exception as e:
+        st.error(f"Critical System Error: {e}")
+else:
+    st.info("System Ready. Upload Data Feed.")
