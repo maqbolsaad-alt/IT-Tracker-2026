@@ -34,22 +34,46 @@ st.markdown("""
         text-transform: uppercase;
         font-size: 13px;
     }
+    
+    /* Custom spacing for the file uploader */
+    .stFileUploader { margin-bottom: 2rem; }
     </style>
     """, unsafe_allow_html=True)
 
-def apply_executive_theme(fig):
+# --- 2. CHART STYLING ENGINE ---
+def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=50, b=10, l=10, r=10),
-        font=dict(family="Inter", size=12),
+        margin=dict(t=80, b=20, l=10, r=10),
+        height=400,
         showlegend=True,
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.1,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=10)
+        ),
+        title=dict(
+            text=title,
+            x=0.5,
+            xanchor='center',
+            font=dict(size=16, color='#58a6ff', weight='bold')
+        )
+    )
+    fig.update_traces(
+        textinfo='value+percent', 
+        textposition='inside',
+        insidetextorientation='horizontal',
+        hole=0.65,
+        marker=dict(line=dict(color='#05070a', width=2))
     )
     return fig
 
-# --- 2. LOGIC & DATA ---
+# --- 3. LOGIC & DATA ---
 st.title("🛡️ Ops Intelligence Command")
 uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibility="collapsed")
 
@@ -58,7 +82,7 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Cleaning: Forward fill hierarchy and extract numeric weeks
+        # Data Cleaning: Forward fill and extract duration
         cols_to_fill = ['Domain', 'Category', 'Status', 'Severity']
         df[cols_to_fill] = df[cols_to_fill].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
@@ -81,31 +105,27 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE TRIPLE DONUTS (Visual Analysis) ---
+        # --- ROW 2: THE THREE DONUTS (The Organized Layout) ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
-        d1, d2, d3 = st.columns(3)
+        d1, d2, d3 = st.columns(3, gap="large")
         
         with d1:
             # Chart 1: Delivery Pipeline Status
-            fig1 = px.pie(df, names='Status', hole=0.75, title="Delivery Pipeline Status",
-                          color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            fig1.update_traces(textinfo='value+percent', textposition='outside')
-            st.plotly_chart(apply_executive_theme(fig1), use_container_width=True)
+            fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Pipeline Status"), use_container_width=True)
             
         with d2:
-            # Chart 2: Risk Distribution (Severity)
-            fig2 = px.pie(df, names='Severity', hole=0.75, title="Risk Distribution",
+            # Chart 2: Risk Distribution
+            fig2 = px.pie(df, names='Severity', 
                           color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            fig2.update_traces(textinfo='value+percent', textposition='outside')
-            st.plotly_chart(apply_executive_theme(fig2), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
             
         with d3:
-            # Chart 3: Incident Volume (Domain)
-            fig3 = px.pie(df, names='Domain', hole=0.75, title="Incident Volume")
-            fig3.update_traces(textinfo='value+percent', textposition='outside')
-            st.plotly_chart(apply_executive_theme(fig3), use_container_width=True)
+            # Chart 3: Incident Volume
+            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
 
         # --- ROW 3: DETAILED OPERATIONS LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -128,6 +148,6 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"Execution Error: {e}")
+        st.error(f"System Error: {e}")
 else:
-    st.info("System Ready. Please upload the 'IT Operations' Excel file.")
+    st.info("System Ready. Upload Data Feed to initialize dashboard.")
