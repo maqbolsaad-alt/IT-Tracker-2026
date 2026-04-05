@@ -29,38 +29,41 @@ st.markdown("""
         color: #58a6ff;
         font-weight: 800;
         text-transform: uppercase;
-        font-size: 13px;
+        font-size: 11px;
+        letter-spacing: 1px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. IMPROVED CHART STYLING ENGINE ---
-def apply_pro_layout(fig, title, is_bar=False):
+# --- 2. ELITE CHART STYLING ENGINE ---
+def apply_pro_layout(fig, title, chart_type="pie"):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=60, b=40, l=10, r=10),
-        height=350,
-        showlegend=not is_bar, # Hide legend for bars as colors are self-explanatory
+        margin=dict(t=50, b=10, l=10, r=10),
+        height=320,
+        showlegend=(chart_type == "pie"),
         title=dict(
             text=f"<b>{title}</b>",
-            x=0.5, y=0.98, xanchor='center',
-            font=dict(size=16, color='#58a6ff')
+            x=0.05, y=0.95, xanchor='left',
+            font=dict(size=14, color='#8b949e')
         )
     )
     
-    if is_bar:
-        fig.update_xaxes(showgrid=False, title_text="", tickfont=dict(color="#8b949e"))
-        fig.update_yaxes(showgrid=True, gridcolor="#30363d", title_text="", tickfont=dict(color="#8b949e"))
-        fig.update_traces(marker_line_width=0, opacity=0.9)
-    else:
+    if chart_type == "bar":
+        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=10, color="#8b949e"))
+        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=11, color="#ffffff"))
         fig.update_traces(
-            textinfo='percent',
-            hole=0.7,
-            marker=dict(line=dict(color='#05070a', width=2))
+            marker_line_width=0, 
+            opacity=0.85, 
+            texttemplate='%{x}', 
+            textposition='outside',
+            cliponaxis=False
         )
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+    else:
+        fig.update_traces(textinfo='percent', hole=0.7, marker=dict(line=dict(color='#05070a', width=2)))
+        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(size=10)))
         
     return fig
 
@@ -93,30 +96,32 @@ if uploaded_file:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
         # --- ROW 2: VISUALIZATIONS ---
-        st.markdown("<div class='section-box'>Risk & Distribution Analysis</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-box'>Volume & Risk Distribution</div>", unsafe_allow_html=True)
         d1, d2, d3, d4 = st.columns(4)
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
         with d2:
-            # BAR CHART: Severity (Ordered)
-            sev_order = ['Critical', 'High', 'Medium', 'Low']
+            # HORIZONTAL BAR: Severity
+            sev_order = ['Low', 'Medium', 'High', 'Critical'] # Bottom to Top
             sev_counts = df['Severity'].value_counts().reindex(sev_order).fillna(0).reset_index()
-            fig2 = px.bar(sev_counts, x='Severity', y='count', color='Severity',
+            fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
+                          color='Severity',
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", is_bar=True), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", "bar"), use_container_width=True)
             
         with d3:
             fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(apply_pro_layout(fig3, "Domain Split"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # BAR CHART: Request Type
-            type_counts = df['Type'].value_counts().reset_index()
-            fig4 = px.bar(type_counts, x='Type', y='count', color_discrete_sequence=['#58a6ff'])
-            st.plotly_chart(apply_pro_layout(fig4, "Request Type", is_bar=True), use_container_width=True)
+            # HORIZONTAL BAR: Request Type
+            type_counts = df['Type'].value_counts().reset_index().sort_values('count')
+            fig4 = px.bar(type_counts, x='count', y='Type', orientation='h',
+                          color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
