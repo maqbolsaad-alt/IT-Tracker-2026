@@ -41,7 +41,7 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=50, b=10, l=10, r=10),
+        margin=dict(t=50, b=10, l=10, r=40), # Added right margin for text labels
         height=320,
         showlegend=(chart_type == "pie"),
         title=dict(
@@ -78,6 +78,10 @@ if uploaded_file:
         
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
+        
+        # Standardize Severity casing to prevent missing 'High' vs 'high'
+        df['Severity'] = df['Severity'].str.capitalize()
+        
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
 
         # --- ROW 1: KPIs ---
@@ -104,9 +108,12 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
         with d2:
-            # HORIZONTAL BAR: Severity
-            sev_order = ['Low', 'Medium', 'High', 'Critical'] # Bottom to Top
-            sev_counts = df['Severity'].value_counts().reindex(sev_order).fillna(0).reset_index()
+            # FIXED: Forced order and Case handling
+            sev_order = ['Low', 'Medium', 'High', 'Critical'] 
+            # This ensures 'High' exists even with 0 counts
+            sev_counts = df['Severity'].value_counts().reindex(sev_order, fill_value=0).reset_index()
+            sev_counts.columns = ['Severity', 'count']
+            
             fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
                           color='Severity',
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
@@ -117,8 +124,11 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # HORIZONTAL BAR: Request Type
-            type_counts = df['Type'].value_counts().reset_index().sort_values('count')
+            # Request Type - Sorted by volume
+            type_counts = df['Type'].value_counts().reset_index()
+            type_counts.columns = ['Type', 'count']
+            type_counts = type_counts.sort_values('count')
+            
             fig4 = px.bar(type_counts, x='count', y='Type', orientation='h',
                           color_discrete_sequence=['#58a6ff'])
             st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
