@@ -19,7 +19,7 @@ st.markdown("""
         margin-bottom: 10px;
     }
     .metric-val { 
-        font-size: 52px; /* Ultra-clear numbers */
+        font-size: 52px; 
         font-weight: 900; 
         color: #ffffff; 
         line-height: 1;
@@ -54,13 +54,13 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=70, b=30, l=10, r=50), # Wider margins for bigger labels
-        height=400, # Taller charts for clarity
+        margin=dict(t=70, b=30, l=10, r=50), 
+        height=400, 
         showlegend=(chart_type == "pie"),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.02, y=0.98, xanchor='left',
-            font=dict(size=22, color='#ffffff') # Large bold titles
+            font=dict(size=22, color='#ffffff') 
         )
     )
     
@@ -70,17 +70,16 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         fig.update_traces(
             marker_line_width=0, 
             opacity=1.0, 
-            texttemplate='<b>%{x}</b>', # Bold numbers on bars
-            textfont=dict(size=18, color="#ffffff"), # Scaled up bar numbers
+            texttemplate='<b>%{x}</b>', 
+            textfont=dict(size=18, color="#ffffff"), 
             textposition='outside', 
             cliponaxis=False
         )
     else:
-        # Donut/Pie Specifics
         fig.update_traces(
             textinfo='percent', 
             hole=0.6, 
-            textfont=dict(size=18, family="Inter-Black"), # Large bold percentages
+            textfont=dict(size=18, family="Inter-Black"), 
             marker=dict(line=dict(color='#05070a', width=3)),
             hoverinfo='label+percent'
         )
@@ -104,6 +103,8 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
+        
+        # Data Cleaning
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Severity'] = df['Severity'].astype(str).str.capitalize()
@@ -120,14 +121,16 @@ if uploaded_file:
                     IT Tracker Dashboard
                 </h1>
                 <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Operational Requests
+                    Operational Requests by Category
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
         # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{df['Category'].nunique()}</div></div>", unsafe_allow_html=True)
+        # Total Units based on Category
+        total_units = df['Category'].nunique()
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units}</div></div>", unsafe_allow_html=True)
         with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
@@ -162,10 +165,11 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            type_counts = df['Type'].value_counts().reset_index().sort_values('count')
-            type_counts.columns = ['Type', 'count']
-            fig4 = px.bar(type_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
-            st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
+            # UPDATED: Grouping by Category instead of Type
+            cat_counts = df['Category'].value_counts().reset_index().sort_values('count')
+            cat_counts.columns = ['Category', 'count']
+            fig4 = px.bar(cat_counts, x='count', y='Category', orientation='h', color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_pro_layout(fig4, "Requests by Category", "bar"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -176,7 +180,7 @@ if uploaded_file:
             return 'color: #8b949e'
 
         st.dataframe(
-            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']].style.map(color_severity, subset=['Severity', 'Status']),
+            df[['Domain', 'Category', 'Type', 'Status', 'Severity', 'Wks']].style.map(color_severity, subset=['Severity', 'Status']),
             column_config={
                 "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
                 "Status": st.column_config.TextColumn("Current State"),
