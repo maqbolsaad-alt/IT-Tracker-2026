@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 # --- 1. HUD & THEME SETUP ---
 st.set_page_config(page_title="Ops Executive Brief", layout="wide", initial_sidebar_state="collapsed")
@@ -11,7 +10,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
-    /* High-Density Metric Cards */
+    /* KPI Metric Cards */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -37,30 +36,30 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE (Fixed Overlap) ---
+# --- 2. CHART STYLING ENGINE (The Clean Organization Fix) ---
 def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        # Increased top margin to t=120 to separate Title from Legend
-        margin=dict(t=120, b=20, l=10, r=10),
-        height=450,
+        # Increased right margin (r=120) to give the legend its own space
+        margin=dict(t=80, b=20, l=10, r=120),
+        height=400,
         showlegend=True,
+        # LEGEND: Moved to the right side, vertically aligned
         legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=0.92,        # Positioned Legend below the Title
-            xanchor="center",
-            x=0.5,
-            font=dict(size=10, color="#8b949e")
+            orientation="v",
+            yanchor="middle",
+            y=0.5,
+            xanchor="left",
+            x=1.05, 
+            font=dict(size=12, color="#8b949e")
         ),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.5,
-            y=0.98,        # Positioned Title at the absolute top
+            y=0.95,
             xanchor='center',
-            yanchor='top',
             font=dict(size=18, color='#58a6ff')
         )
     )
@@ -68,7 +67,7 @@ def apply_pro_layout(fig, title):
         textinfo='value+percent', 
         textposition='inside',
         insidetextorientation='horizontal',
-        hole=0.65,
+        hole=0.7,
         marker=dict(line=dict(color='#05070a', width=2))
     )
     return fig
@@ -82,18 +81,15 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Cleaning: Forward fill hierarchy
-        cols_to_fill = ['Domain', 'Category', 'Status', 'Severity']
-        df[cols_to_fill] = df[cols_to_fill].ffill()
+        # Data Cleaning
+        cols = ['Domain', 'Category', 'Status', 'Severity']
+        df[cols] = df[cols].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
 
-        # --- ROW 1: THE KPIs ---
+        # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        
-        with k1:
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{df['Category'].nunique()}</div></div>", unsafe_allow_html=True)
-        with k2:
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{df['Category'].nunique()}</div></div>", unsafe_allow_html=True)
+        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
             rate = (closed/len(df)*100) if len(df) > 0 else 0
@@ -108,23 +104,22 @@ if uploaded_file:
         # --- ROW 2: THE THREE DONUTS ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
-        d1, d2, d3 = st.columns(3, gap="large")
+        d1, d2, d3 = st.columns(3)
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Delivery Pipeline Status"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Pipeline"), use_container_width=True)
             
         with d2:
-            fig2 = px.pie(df, names='Severity', 
-                          color='Severity', 
+            fig2 = px.pie(df, names='Severity', color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
             st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
             
         with d3:
-            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
+            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Safe)
             st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
 
-        # --- ROW 3: DETAILED OPERATIONS LEDGER ---
+        # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
         
         def color_severity(val):
@@ -145,6 +140,6 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"Execution Error: {e}")
+        st.error(f"Error: {e}")
 else:
     st.info("System Ready. Upload Data Feed.")
