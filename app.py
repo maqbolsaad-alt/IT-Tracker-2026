@@ -10,6 +10,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
+    /* KPI Metric Cards */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -21,6 +22,7 @@ st.markdown("""
     .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
     .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
     
+    /* Section Headers */
     .section-box {
         padding: 10px 0px;
         border-bottom: 1px solid #30363d;
@@ -34,39 +36,36 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE (Optimized for 4 Columns) ---
+# --- 2. CHART STYLING ENGINE ---
 def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=100, b=10, l=5, r=5),
-        height=400,
+        margin=dict(t=80, b=20, l=10, r=10), # Tightened margins for 4-column layout
+        height=350, # Slightly shorter to fit better on screen
         showlegend=True,
         legend=dict(
             orientation="h",
-            yanchor="top",
-            y=0.95,
+            yanchor="bottom",
+            y=-0.2,
             xanchor="center",
-            x=0.5,
-            font=dict(size=9, color="#8b949e") # Smaller font for 4-col fit
+            x=0.5, 
+            font=dict(size=10, color="#8b949e")
         ),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.5,
-            y=0.98,
+            y=0.95,
             xanchor='center',
-            yanchor='top',
-            font=dict(size=15, color='#58a6ff')
+            font=dict(size=16, color='#58a6ff')
         )
     )
     fig.update_traces(
-        textinfo='label+value', 
+        textinfo='percent', # Value removed to keep clean in small columns
         textposition='inside',
-        insidetextorientation='horizontal',
         hole=0.7,
-        marker=dict(line=dict(color='#05070a', width=2)),
-        textfont=dict(size=10, weight='bold')
+        marker=dict(line=dict(color='#05070a', width=2))
     )
     return fig
 
@@ -79,7 +78,8 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        cols = ['Domain', 'Category', 'Status', 'Severity']
+        # Data Cleaning (Added 'Type')
+        cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
 
@@ -99,26 +99,27 @@ if uploaded_file:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
         # --- ROW 2: THE FOUR DONUTS ---
-        st.markdown("<div class='section-box'>Multi-Dimensional Analysis</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-box'>Risk & Distribution Analysis</div>", unsafe_allow_html=True)
         
-        d1, d2, d3, d4 = st.columns(4, gap="small")
+        d1, d2, d3, d4 = st.columns(4)
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Pipeline Status"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status"), use_container_width=True)
             
         with d2:
             fig2 = px.pie(df, names='Severity', color='Severity', 
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels"), use_container_width=True)
             
         with d3:
-            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Prism)
-            st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
+            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
+            st.plotly_chart(apply_pro_layout(fig3, "Domain Split"), use_container_width=True)
 
         with d4:
-            fig4 = px.pie(df, names='Category', color_discrete_sequence=px.colors.qualitative.Safe)
-            st.plotly_chart(apply_pro_layout(fig4, "Category Split"), use_container_width=True)
+            # NEW DONUT: Type
+            fig4 = px.pie(df, names='Type', color_discrete_sequence=px.colors.qualitative.Safe)
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -130,9 +131,12 @@ if uploaded_file:
             return 'color: #8b949e'
 
         st.dataframe(
-            df[['Domain', 'Category', 'Status', 'Severity', 'Wks']].style.applymap(color_severity, subset=['Severity', 'Status']),
+            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']].style.applymap(color_severity, subset=['Severity', 'Status']),
             column_config={
                 "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
+                "Status": st.column_config.TextColumn("Current State"),
+                "Severity": st.column_config.TextColumn("Risk Class"),
+                "Type": st.column_config.TextColumn("Classification")
             },
             use_container_width=True,
             hide_index=True
