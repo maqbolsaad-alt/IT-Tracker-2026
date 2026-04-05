@@ -77,9 +77,9 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         )
     else:
         fig.update_traces(
-            textinfo='percent', 
+            textinfo='percent+value', 
             hole=0.6, 
-            textfont=dict(size=18, family="Inter-Black"), 
+            textfont=dict(size=16, family="Inter-Black"), 
             marker=dict(line=dict(color='#05070a', width=3)),
             hoverinfo='label+percent'
         )
@@ -114,14 +114,18 @@ if uploaded_file:
         else:
             df['Wks'] = 0
 
+        # --- CRITICAL STEP: CREATE UNIT-ONLY MASTER (26 Unique Categories) ---
+        # This ensures all charts use the same "26" base count
+        df_units = df.drop_duplicates(subset=['Category']).copy()
+
         # --- HEADER SECTION ---
-        st.markdown("""
+        st.markdown(f"""
             <div style="margin-bottom: 45px; border-left: 5px solid #58a6ff; padding-left: 30px; margin-top: 30px;">
                 <h1 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 900; margin-bottom: 0px; font-size: 48px; letter-spacing: -1.5px;">
                     IT Tracker Dashboard
                 </h1>
                 <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Operational Request Summary
+                    Unified Operational View ({df_units.shape[0]} Categories)
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -129,8 +133,7 @@ if uploaded_file:
         # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
         
-        # Calculating Total Unique Units (Categories)
-        total_units_val = df['Category'].nunique()
+        total_units_val = df_units.shape[0] # Should be 26
         
         with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units_val}</div></div>", unsafe_allow_html=True)
         with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
@@ -145,18 +148,19 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: VISUALIZATIONS ---
-        st.markdown("<div class='section-box'>Volume & Risk Distribution</div>", unsafe_allow_html=True)
+        # --- ROW 2: VISUALIZATIONS (ALL BASED ON DF_UNITS) ---
+        st.markdown("<div class='section-box'>Volume & Risk Distribution (Unit-Level)</div>", unsafe_allow_html=True)
         d1, d2, d3, d4 = st.columns(4)
         
         with d1:
-            # Pie charts still represent the 40 individual task statuses
-            fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
+            # Status based on Category
+            fig1 = px.pie(df_units, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
             st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
         with d2:
+            # Severity based on Category
             target_order = ['Low', 'Medium', 'High'] 
-            sev_counts = df['Severity'].value_counts().reindex(target_order).dropna().reset_index()
+            sev_counts = df_units['Severity'].value_counts().reindex(target_order).dropna().reset_index()
             sev_counts.columns = ['Severity', 'count']
             fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
                           color='Severity',
@@ -164,21 +168,18 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", "bar"), use_container_width=True)
             
         with d3:
-            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
+            # Domain based on Category
+            fig3 = px.pie(df_units, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # --- UNIT-BASED LOGIC START ---
-            # We filter for only 1 row per Category to ensure the bar chart sums to 26
-            unit_df = df[['Category', 'Type']].drop_duplicates()
-            type_counts = unit_df['Type'].value_counts().reset_index()
+            # Type based on Category
+            type_counts = df_units['Type'].value_counts().reset_index()
             type_counts.columns = ['Type', 'count']
             type_counts = type_counts.sort_values('count')
             
             fig4 = px.bar(type_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
-            # Chart title updated to reflect it is based on Units, not Task rows
-            st.plotly_chart(apply_pro_layout(fig4, "Request Type (Units)", "bar"), use_container_width=True)
-            # --- UNIT-BASED LOGIC END ---
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
