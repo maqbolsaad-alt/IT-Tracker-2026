@@ -10,24 +10,23 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
-    /* ENHANCED KPI CARD STYLING */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
         border-left: 6px solid #58a6ff;
-        padding: 24px; /* Increased padding */
+        padding: 24px;
         border-radius: 14px;
         margin-bottom: 10px;
     }
     .metric-val { 
-        font-size: 48px; /* Scaled up from 32px */
+        font-size: 52px; /* Ultra-clear numbers */
         font-weight: 900; 
         color: #ffffff; 
         line-height: 1;
-        text-shadow: 0px 0px 10px rgba(88, 166, 255, 0.2); /* Subtle glow */
+        text-shadow: 0px 0px 12px rgba(88, 166, 255, 0.25);
     }
     .metric-lbl { 
-        font-size: 14px; /* Scaled up from 11px */
+        font-size: 15px; 
         color: #8b949e; 
         text-transform: uppercase; 
         letter-spacing: 2px; 
@@ -35,7 +34,6 @@ st.markdown("""
         font-weight: 700;
     }
     
-    /* ENHANCED SECTION HEADERS */
     .section-box {
         padding: 15px 0px;
         border-bottom: 2px solid #30363d;
@@ -44,47 +42,58 @@ st.markdown("""
         color: #58a6ff;
         font-weight: 800;
         text-transform: uppercase;
-        font-size: 14px; /* Scaled up */
+        font-size: 15px;
         letter-spacing: 1.5px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ELITE CHART STYLING ENGINE ---
+# --- 2. ENHANCED CHART STYLING ENGINE ---
 def apply_pro_layout(fig, title, chart_type="pie"):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=60, b=20, l=10, r=40),
-        height=380, # Increased height for better visibility
+        margin=dict(t=70, b=30, l=10, r=50), # Wider margins for bigger labels
+        height=400, # Taller charts for clarity
         showlegend=(chart_type == "pie"),
         title=dict(
             text=f"<b>{title}</b>",
-            x=0.05, y=0.95, xanchor='left',
-            font=dict(size=18, color='#ffffff') # Scaled up title
+            x=0.02, y=0.98, xanchor='left',
+            font=dict(size=22, color='#ffffff') # Large bold titles
         )
     )
     
     if chart_type == "bar":
-        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=12, color="#8b949e"))
-        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=13, color="#ffffff"))
+        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=14, color="#8b949e"))
+        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=16, color="#ffffff", family="Inter-Bold"))
         fig.update_traces(
             marker_line_width=0, 
-            opacity=0.9, 
-            texttemplate='<b>%{x}</b>', 
-            textfont=dict(size=14), # Bigger bar labels
+            opacity=1.0, 
+            texttemplate='<b>%{x}</b>', # Bold numbers on bars
+            textfont=dict(size=18, color="#ffffff"), # Scaled up bar numbers
             textposition='outside', 
             cliponaxis=False
         )
     else:
+        # Donut/Pie Specifics
         fig.update_traces(
             textinfo='percent', 
             hole=0.6, 
-            textfont=dict(size=14), # Bigger pie labels
-            marker=dict(line=dict(color='#05070a', width=3))
+            textfont=dict(size=18, family="Inter-Black"), # Large bold percentages
+            marker=dict(line=dict(color='#05070a', width=3)),
+            hoverinfo='label+percent'
         )
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=12)))
+        fig.update_layout(
+            legend=dict(
+                orientation="h", 
+                yanchor="bottom", 
+                y=-0.25, 
+                xanchor="center", 
+                x=0.5, 
+                font=dict(size=14)
+            )
+        )
     return fig
 
 # --- 3. MAIN INTERFACE ---
@@ -104,13 +113,13 @@ if uploaded_file:
         else:
             df['Wks'] = 0
 
-        # --- HEADER SECTION (SCALED) ---
+        # --- HEADER SECTION ---
         st.markdown("""
-            <div style="margin-bottom: 40px; border-left: 4px solid #58a6ff; padding-left: 25px; margin-top: 25px;">
-                <h1 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 900; margin-bottom: 0px; font-size: 42px; letter-spacing: -1px;">
+            <div style="margin-bottom: 45px; border-left: 5px solid #58a6ff; padding-left: 30px; margin-top: 30px;">
+                <h1 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 900; margin-bottom: 0px; font-size: 48px; letter-spacing: -1.5px;">
                     IT Tracker Dashboard
                 </h1>
-                <p style="color: #8b949e; font-size: 16px; text-transform: uppercase; letter-spacing: 3px; margin-top: 8px; font-weight: 500;">
+                <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
                     Operational Requests
                 </p>
             </div>
