@@ -10,7 +10,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
-    /* KPI Metric Cards */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -22,7 +21,6 @@ st.markdown("""
     .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
     .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
     
-    /* Section Headers */
     .section-box {
         padding: 10px 0px;
         border-bottom: 1px solid #30363d;
@@ -36,39 +34,40 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE (The Clean Organization Fix) ---
+# --- 2. CHART STYLING ENGINE (The "Type Next to Value" Fix) ---
 def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        # Increased right margin (r=120) to give the legend its own space
-        margin=dict(t=80, b=20, l=10, r=120),
-        height=400,
+        margin=dict(t=100, b=20, l=10, r=10),
+        height=450,
         showlegend=True,
-        # LEGEND: Moved to the right side, vertically aligned
         legend=dict(
-            orientation="v",
-            yanchor="middle",
-            y=0.5,
-            xanchor="left",
-            x=1.05, 
-            font=dict(size=12, color="#8b949e")
+            orientation="h",
+            yanchor="top",
+            y=0.95,        # Legend placed safely under title
+            xanchor="center",
+            x=0.5,
+            font=dict(size=10, color="#8b949e")
         ),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.5,
-            y=0.95,
+            y=0.98,
             xanchor='center',
+            yanchor='top',
             font=dict(size=18, color='#58a6ff')
         )
     )
+    # textinfo='label+value' puts the "Type" name inside the donut next to the number
     fig.update_traces(
-        textinfo='value+percent', 
+        textinfo='label+value', 
         textposition='inside',
         insidetextorientation='horizontal',
         hole=0.7,
-        marker=dict(line=dict(color='#05070a', width=2))
+        marker=dict(line=dict(color='#05070a', width=2)),
+        textfont=dict(size=11, weight='bold')
     )
     return fig
 
@@ -81,7 +80,6 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Cleaning
         cols = ['Domain', 'Category', 'Status', 'Severity']
         df[cols] = df[cols].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
@@ -104,7 +102,7 @@ if uploaded_file:
         # --- ROW 2: THE THREE DONUTS ---
         st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
         
-        d1, d2, d3 = st.columns(3)
+        d1, d2, d3 = st.columns(3, gap="medium")
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
@@ -116,7 +114,7 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
             
         with d3:
-            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Safe)
+            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Bold)
             st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
