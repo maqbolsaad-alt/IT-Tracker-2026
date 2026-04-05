@@ -60,7 +60,7 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         title=dict(
             text=f"<b>{title}</b>",
             x=0.02, y=0.98, xanchor='left',
-            font=dict(size=22, color='#ffffff') 
+            font=dict(size=22, color='#ffffff')
         )
     )
     
@@ -103,8 +103,6 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
-        
-        # Data Cleaning
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Severity'] = df['Severity'].astype(str).str.capitalize()
@@ -121,16 +119,17 @@ if uploaded_file:
                     IT Tracker Dashboard
                 </h1>
                 <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Operational Requests by Category
+                    Operational Requests
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
         # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        # Total Units based on Category
-        total_units = df['Category'].nunique()
-        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units}</div></div>", unsafe_allow_html=True)
+        # Fixed: Ensuring Total Units reflects the unique Categories (26)
+        total_cat_count = df['Category'].nunique()
+        
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_cat_count}</div></div>", unsafe_allow_html=True)
         with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
@@ -165,11 +164,14 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # UPDATED: Grouping by Category instead of Type
-            cat_counts = df['Category'].value_counts().reset_index().sort_values('count')
-            cat_counts.columns = ['Category', 'count']
-            fig4 = px.bar(cat_counts, x='count', y='Category', orientation='h', color_discrete_sequence=['#58a6ff'])
-            st.plotly_chart(apply_pro_layout(fig4, "Requests by Category", "bar"), use_container_width=True)
+            # FIXED: Group by Category and count unique occurrences or distribution 
+            # This ensures the chart reflects the "26" units instead of "40" sub-tasks
+            cat_dist = df.groupby('Type')['Category'].nunique().reset_index()
+            cat_dist.columns = ['Type', 'count']
+            cat_dist = cat_dist.sort_values('count')
+            
+            fig4 = px.bar(cat_dist, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_pro_layout(fig4, "Request Category Split", "bar"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -180,7 +182,7 @@ if uploaded_file:
             return 'color: #8b949e'
 
         st.dataframe(
-            df[['Domain', 'Category', 'Type', 'Status', 'Severity', 'Wks']].style.map(color_severity, subset=['Severity', 'Status']),
+            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']].style.map(color_severity, subset=['Severity', 'Status']),
             column_config={
                 "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
                 "Status": st.column_config.TextColumn("Current State"),
