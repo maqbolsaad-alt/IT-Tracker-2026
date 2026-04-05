@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.express as px
 
 # --- 1. HUD & THEME SETUP ---
+# This must be the first Streamlit command
 st.set_page_config(page_title="Ops Executive Brief", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -10,6 +11,7 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
+    /* KPI Card Styling */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -21,6 +23,7 @@ st.markdown("""
     .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
     .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
     
+    /* Section Divider Styling */
     .section-box {
         padding: 10px 0px;
         border-bottom: 1px solid #30363d;
@@ -69,12 +72,17 @@ if uploaded_file:
         # Load and Clean Data
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
+        
+        # Standardize Columns
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
-        # Fill missing values from merged cells
         df[cols] = df[cols].ffill()
-        df['Severity'] = df['Severity'].str.capitalize()
-        # Extract numeric weeks from "Duration" column
-        df['Wks'] = df['Duration'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+        df['Severity'] = df['Severity'].astype(str).str.capitalize()
+        
+        # Duration Logic
+        if 'Duration' in df.columns:
+            df['Wks'] = df['Duration'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+        else:
+            df['Wks'] = 0
 
         # --- HEADER SECTION ---
         st.markdown("""
@@ -83,7 +91,7 @@ if uploaded_file:
                     IT Tracker Dashboard
                 </h2>
                 <p style="color: #8b949e; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px;">
-                    Operational Health & Risk Vector Analysis
+                    Operational Requests
                 </p>
             </div>
         """, unsafe_allow_html=True)
@@ -155,6 +163,6 @@ if uploaded_file:
         )
 
     except Exception as e:
-        st.error(f"Critical System Failure: {e}")
+        st.error(f"System Error: {e}")
 else:
     st.info("System Ready. Upload Data Feed.")
