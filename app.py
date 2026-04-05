@@ -34,22 +34,22 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE (The "Type Next to Value" Fix) ---
+# --- 2. CHART STYLING ENGINE (Optimized for 4 Columns) ---
 def apply_pro_layout(fig, title):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=100, b=20, l=10, r=10),
-        height=450,
+        margin=dict(t=100, b=10, l=5, r=5),
+        height=400,
         showlegend=True,
         legend=dict(
             orientation="h",
             yanchor="top",
-            y=0.95,        # Legend placed safely under title
+            y=0.95,
             xanchor="center",
             x=0.5,
-            font=dict(size=10, color="#8b949e")
+            font=dict(size=9, color="#8b949e") # Smaller font for 4-col fit
         ),
         title=dict(
             text=f"<b>{title}</b>",
@@ -57,17 +57,16 @@ def apply_pro_layout(fig, title):
             y=0.98,
             xanchor='center',
             yanchor='top',
-            font=dict(size=18, color='#58a6ff')
+            font=dict(size=15, color='#58a6ff')
         )
     )
-    # textinfo='label+value' puts the "Type" name inside the donut next to the number
     fig.update_traces(
         textinfo='label+value', 
         textposition='inside',
         insidetextorientation='horizontal',
         hole=0.7,
         marker=dict(line=dict(color='#05070a', width=2)),
-        textfont=dict(size=11, weight='bold')
+        textfont=dict(size=10, weight='bold')
     )
     return fig
 
@@ -99,14 +98,14 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE THREE DONUTS ---
-        st.markdown("<div class='section-box'>Risk & Duration Analysis</div>", unsafe_allow_html=True)
+        # --- ROW 2: THE FOUR DONUTS ---
+        st.markdown("<div class='section-box'>Multi-Dimensional Analysis</div>", unsafe_allow_html=True)
         
-        d1, d2, d3 = st.columns(3, gap="medium")
+        d1, d2, d3, d4 = st.columns(4, gap="small")
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Delivery Pipeline"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Pipeline Status"), use_container_width=True)
             
         with d2:
             fig2 = px.pie(df, names='Severity', color='Severity', 
@@ -114,8 +113,12 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig2, "Risk Distribution"), use_container_width=True)
             
         with d3:
-            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Bold)
+            fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Prism)
             st.plotly_chart(apply_pro_layout(fig3, "Incident Volume"), use_container_width=True)
+
+        with d4:
+            fig4 = px.pie(df, names='Category', color_discrete_sequence=px.colors.qualitative.Safe)
+            st.plotly_chart(apply_pro_layout(fig4, "Category Split"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -130,8 +133,6 @@ if uploaded_file:
             df[['Domain', 'Category', 'Status', 'Severity', 'Wks']].style.applymap(color_severity, subset=['Severity', 'Status']),
             column_config={
                 "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
-                "Status": st.column_config.TextColumn("Current State"),
-                "Severity": st.column_config.TextColumn("Risk Class")
             },
             use_container_width=True,
             hide_index=True
