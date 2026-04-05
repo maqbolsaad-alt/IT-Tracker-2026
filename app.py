@@ -119,18 +119,17 @@ if uploaded_file:
                     IT Tracker Dashboard
                 </h1>
                 <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Operational Requests
+                    Operational Analysis (26 Unique Units)
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
         # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        # Fixed: Ensuring Total Units reflects the unique Categories (26)
-        total_cat_count = df['Category'].nunique()
+        total_units = df['Category'].nunique() # This should be 26
         
-        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_cat_count}</div></div>", unsafe_allow_html=True)
-        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units}</div></div>", unsafe_allow_html=True)
+        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
             rate = (closed/len(df)*100) if len(df) > 0 else 0
@@ -148,7 +147,7 @@ if uploaded_file:
         
         with d1:
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Task Status", "pie"), use_container_width=True)
             
         with d2:
             target_order = ['Low', 'Medium', 'High'] 
@@ -164,14 +163,14 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # FIXED: Group by Category and count unique occurrences or distribution 
-            # This ensures the chart reflects the "26" units instead of "40" sub-tasks
-            cat_dist = df.groupby('Type')['Category'].nunique().reset_index()
-            cat_dist.columns = ['Type', 'count']
-            cat_dist = cat_dist.sort_values('count')
+            # --- CRITICAL FIX: Group by Type but count UNIQUE Categories ---
+            # This ensures the total sum of bars equals the "Total Units" (26)
+            type_unit_counts = df.groupby('Type')['Category'].nunique().reset_index()
+            type_unit_counts.columns = ['Type', 'count']
+            type_unit_counts = type_unit_counts.sort_values('count')
             
-            fig4 = px.bar(cat_dist, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
-            st.plotly_chart(apply_pro_layout(fig4, "Request Category Split", "bar"), use_container_width=True)
+            fig4 = px.bar(type_unit_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type (Units)", "bar"), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
