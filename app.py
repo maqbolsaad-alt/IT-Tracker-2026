@@ -10,7 +10,6 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
-    /* KPI Metric Cards */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
@@ -22,7 +21,6 @@ st.markdown("""
     .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
     .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
     
-    /* Section Headers */
     .section-box {
         padding: 10px 0px;
         border-bottom: 1px solid #30363d;
@@ -36,37 +34,34 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. CHART STYLING ENGINE ---
-def apply_pro_layout(fig, title):
+# --- 2. IMPROVED CHART STYLING ENGINE ---
+def apply_pro_layout(fig, title, is_bar=False):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=80, b=20, l=10, r=10), # Tightened margins for 4-column layout
-        height=350, # Slightly shorter to fit better on screen
-        showlegend=True,
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=-0.2,
-            xanchor="center",
-            x=0.5, 
-            font=dict(size=10, color="#8b949e")
-        ),
+        margin=dict(t=60, b=40, l=10, r=10),
+        height=350,
+        showlegend=not is_bar, # Hide legend for bars as colors are self-explanatory
         title=dict(
             text=f"<b>{title}</b>",
-            x=0.5,
-            y=0.95,
-            xanchor='center',
+            x=0.5, y=0.98, xanchor='center',
             font=dict(size=16, color='#58a6ff')
         )
     )
-    fig.update_traces(
-        textinfo='percent', # Value removed to keep clean in small columns
-        textposition='inside',
-        hole=0.7,
-        marker=dict(line=dict(color='#05070a', width=2))
-    )
+    
+    if is_bar:
+        fig.update_xaxes(showgrid=False, title_text="", tickfont=dict(color="#8b949e"))
+        fig.update_yaxes(showgrid=True, gridcolor="#30363d", title_text="", tickfont=dict(color="#8b949e"))
+        fig.update_traces(marker_line_width=0, opacity=0.9)
+    else:
+        fig.update_traces(
+            textinfo='percent',
+            hole=0.7,
+            marker=dict(line=dict(color='#05070a', width=2))
+        )
+        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5))
+        
     return fig
 
 # --- 3. LOGIC & DATA ---
@@ -78,7 +73,6 @@ if uploaded_file:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Cleaning (Added 'Type')
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Wks'] = df['Duration'].astype(str).str.extract('(\d+)').fillna(0).astype(int)
@@ -98,9 +92,8 @@ if uploaded_file:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: THE FOUR DONUTS ---
+        # --- ROW 2: VISUALIZATIONS ---
         st.markdown("<div class='section-box'>Risk & Distribution Analysis</div>", unsafe_allow_html=True)
-        
         d1, d2, d3, d4 = st.columns(4)
         
         with d1:
@@ -108,18 +101,22 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig1, "Delivery Status"), use_container_width=True)
             
         with d2:
-            fig2 = px.pie(df, names='Severity', color='Severity', 
+            # BAR CHART: Severity (Ordered)
+            sev_order = ['Critical', 'High', 'Medium', 'Low']
+            sev_counts = df['Severity'].value_counts().reindex(sev_order).fillna(0).reset_index()
+            fig2 = px.bar(sev_counts, x='Severity', y='count', color='Severity',
                           color_discrete_map={'Critical': '#f85149', 'High': '#d29922', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", is_bar=True), use_container_width=True)
             
         with d3:
             fig3 = px.pie(df, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split"), use_container_width=True)
 
         with d4:
-            # NEW DONUT: Type
-            fig4 = px.pie(df, names='Type', color_discrete_sequence=px.colors.qualitative.Safe)
-            st.plotly_chart(apply_pro_layout(fig4, "Request Type"), use_container_width=True)
+            # BAR CHART: Request Type
+            type_counts = df['Type'].value_counts().reset_index()
+            fig4 = px.bar(type_counts, x='Type', y='count', color_discrete_sequence=['#58a6ff'])
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type", is_bar=True), use_container_width=True)
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
@@ -138,11 +135,10 @@ if uploaded_file:
                 "Severity": st.column_config.TextColumn("Risk Class"),
                 "Type": st.column_config.TextColumn("Classification")
             },
-            use_container_width=True,
-            hide_index=True
+            use_container_width=True, hide_index=True
         )
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error Processing Data: {e}")
 else:
     st.info("System Ready. Upload Data Feed.")
