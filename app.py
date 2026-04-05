@@ -103,6 +103,8 @@ if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
+        
+        # Standardize Data
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Severity'] = df['Severity'].astype(str).str.capitalize()
@@ -119,17 +121,19 @@ if uploaded_file:
                     IT Tracker Dashboard
                 </h1>
                 <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Operational Analysis (26 Unique Units)
+                    Operational Request Summary
                 </p>
             </div>
         """, unsafe_allow_html=True)
 
         # --- ROW 1: KPIs ---
         k1, k2, k3, k4, k5 = st.columns(5)
-        total_units = df['Category'].nunique() # This should be 26
         
-        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units}</div></div>", unsafe_allow_html=True)
-        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
+        # Calculating Total Unique Units (Categories)
+        total_units_val = df['Category'].nunique()
+        
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units_val}</div></div>", unsafe_allow_html=True)
+        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
         with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
             rate = (closed/len(df)*100) if len(df) > 0 else 0
@@ -146,8 +150,9 @@ if uploaded_file:
         d1, d2, d3, d4 = st.columns(4)
         
         with d1:
+            # Pie charts still represent the 40 individual task statuses
             fig1 = px.pie(df, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Task Status", "pie"), use_container_width=True)
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
         with d2:
             target_order = ['Low', 'Medium', 'High'] 
@@ -163,14 +168,17 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
         with d4:
-            # --- CRITICAL FIX: Group by Type but count UNIQUE Categories ---
-            # This ensures the total sum of bars equals the "Total Units" (26)
-            type_unit_counts = df.groupby('Type')['Category'].nunique().reset_index()
-            type_unit_counts.columns = ['Type', 'count']
-            type_unit_counts = type_unit_counts.sort_values('count')
+            # --- UNIT-BASED LOGIC START ---
+            # We filter for only 1 row per Category to ensure the bar chart sums to 26
+            unit_df = df[['Category', 'Type']].drop_duplicates()
+            type_counts = unit_df['Type'].value_counts().reset_index()
+            type_counts.columns = ['Type', 'count']
+            type_counts = type_counts.sort_values('count')
             
-            fig4 = px.bar(type_unit_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
+            fig4 = px.bar(type_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
+            # Chart title updated to reflect it is based on Units, not Task rows
             st.plotly_chart(apply_pro_layout(fig4, "Request Type (Units)", "bar"), use_container_width=True)
+            # --- UNIT-BASED LOGIC END ---
 
         # --- ROW 3: DETAILED LEDGER ---
         st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
