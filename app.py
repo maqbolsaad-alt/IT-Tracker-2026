@@ -10,27 +10,42 @@ st.markdown("""
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
     
+    /* ENHANCED KPI CARD STYLING */
     .metric-container {
         background: #0d1117;
         border: 1px solid #30363d;
-        border-left: 5px solid #58a6ff;
-        padding: 18px;
-        border-radius: 12px;
+        border-left: 6px solid #58a6ff;
+        padding: 24px; /* Increased padding */
+        border-radius: 14px;
         margin-bottom: 10px;
     }
-    .metric-val { font-size: 32px; font-weight: 900; color: #ffffff; line-height: 1; }
-    .metric-lbl { font-size: 11px; color: #8b949e; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px; }
+    .metric-val { 
+        font-size: 48px; /* Scaled up from 32px */
+        font-weight: 900; 
+        color: #ffffff; 
+        line-height: 1;
+        text-shadow: 0px 0px 10px rgba(88, 166, 255, 0.2); /* Subtle glow */
+    }
+    .metric-lbl { 
+        font-size: 14px; /* Scaled up from 11px */
+        color: #8b949e; 
+        text-transform: uppercase; 
+        letter-spacing: 2px; 
+        margin-bottom: 12px; 
+        font-weight: 700;
+    }
     
+    /* ENHANCED SECTION HEADERS */
     .section-box {
-        padding: 10px 0px;
-        border-bottom: 1px solid #30363d;
-        margin-top: 25px;
-        margin-bottom: 20px;
+        padding: 15px 0px;
+        border-bottom: 2px solid #30363d;
+        margin-top: 35px;
+        margin-bottom: 25px;
         color: #58a6ff;
         font-weight: 800;
         text-transform: uppercase;
-        font-size: 11px;
-        letter-spacing: 1px;
+        font-size: 14px; /* Scaled up */
+        letter-spacing: 1.5px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -41,23 +56,35 @@ def apply_pro_layout(fig, title, chart_type="pie"):
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=50, b=10, l=10, r=40),
-        height=320,
+        margin=dict(t=60, b=20, l=10, r=40),
+        height=380, # Increased height for better visibility
         showlegend=(chart_type == "pie"),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.05, y=0.95, xanchor='left',
-            font=dict(size=14, color='#8b949e')
+            font=dict(size=18, color='#ffffff') # Scaled up title
         )
     )
     
     if chart_type == "bar":
-        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=10, color="#8b949e"))
-        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=11, color="#ffffff"))
-        fig.update_traces(marker_line_width=0, opacity=0.85, texttemplate='%{x}', textposition='outside', cliponaxis=False)
+        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=12, color="#8b949e"))
+        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=13, color="#ffffff"))
+        fig.update_traces(
+            marker_line_width=0, 
+            opacity=0.9, 
+            texttemplate='<b>%{x}</b>', 
+            textfont=dict(size=14), # Bigger bar labels
+            textposition='outside', 
+            cliponaxis=False
+        )
     else:
-        fig.update_traces(textinfo='percent', hole=0.7, marker=dict(line=dict(color='#05070a', width=2)))
-        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(size=10)))
+        fig.update_traces(
+            textinfo='percent', 
+            hole=0.6, 
+            textfont=dict(size=14), # Bigger pie labels
+            marker=dict(line=dict(color='#05070a', width=3))
+        )
+        fig.update_layout(legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5, font=dict(size=12)))
     return fig
 
 # --- 3. MAIN INTERFACE ---
@@ -66,7 +93,6 @@ uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibili
 
 if uploaded_file:
     try:
-        # Data Processing
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
@@ -78,13 +104,13 @@ if uploaded_file:
         else:
             df['Wks'] = 0
 
-        # --- HEADER SECTION ---
+        # --- HEADER SECTION (SCALED) ---
         st.markdown("""
-            <div style="margin-bottom: 35px; border-left: 2px solid #30363d; padding-left: 20px; margin-top: 20px;">
-                <h2 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 800; margin-bottom: 0px; letter-spacing: -0.5px;">
+            <div style="margin-bottom: 40px; border-left: 4px solid #58a6ff; padding-left: 25px; margin-top: 25px;">
+                <h1 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 900; margin-bottom: 0px; font-size: 42px; letter-spacing: -1px;">
                     IT Tracker Dashboard
-                </h2>
-                <p style="color: #8b949e; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px;">
+                </h1>
+                <p style="color: #8b949e; font-size: 16px; text-transform: uppercase; letter-spacing: 3px; margin-top: 8px; font-weight: 500;">
                     Operational Requests
                 </p>
             </div>
@@ -114,11 +140,9 @@ if uploaded_file:
             st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
         with d2:
-            # Removed 'Critical', High is now Red
             target_order = ['Low', 'Medium', 'High'] 
             sev_counts = df['Severity'].value_counts().reindex(target_order).dropna().reset_index()
             sev_counts.columns = ['Severity', 'count']
-            
             fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
                           color='Severity',
                           color_discrete_map={'High': '#f85149', 'Medium': '#58a6ff', 'Low': '#30363d'})
