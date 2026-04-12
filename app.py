@@ -9,20 +9,21 @@ st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
     
-    /* Root Body Overrides */
+    /* Root Body Overrides - Global Font Size 16px */
     html, body, [class*="st-"] {
         font-family: 'Inter', sans-serif;
         background-color: #f8f9fb;
         color: #1e293b;
+        font-size: 16px; 
     }
 
     /* Professional Metric Cards */
     .metric-container {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-top: 4px solid #3b82f6;
-        padding: 24px;
-        border-radius: 12px;
+        border-top: 5px solid #3b82f6;
+        padding: 28px;
+        border-radius: 14px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         transition: transform 0.2s ease;
     }
@@ -31,84 +32,96 @@ st.markdown("""
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
     .metric-val { 
-        font-size: 48px; 
+        font-size: 52px; 
         font-weight: 900; 
         color: #0f172a; 
         line-height: 1.1;
-        letter-spacing: -1px;
+        letter-spacing: -1.5px;
     }
     .metric-lbl { 
-        font-size: 13px; 
+        font-size: 15px; 
         color: #64748b; 
         text-transform: uppercase; 
-        letter-spacing: 1.2px; 
-        margin-bottom: 8px; 
+        letter-spacing: 1.5px; 
+        margin-bottom: 10px; 
         font-weight: 700;
     }
     
     /* Sleek Section Headers */
     .section-box {
-        padding: 10px 0px;
-        border-bottom: 2px solid #e2e8f0;
-        margin-top: 40px;
-        margin-bottom: 20px;
-        color: #334155;
+        padding: 12px 0px;
+        border-bottom: 3px solid #e2e8f0;
+        margin-top: 45px;
+        margin-bottom: 25px;
+        color: #1e293b;
         font-weight: 800;
         text-transform: uppercase;
-        font-size: 14px;
-        letter-spacing: 1px;
+        font-size: 16px;
+        letter-spacing: 1.5px;
     }
 
     /* File Uploader Customization */
     .stFileUploader {
         background-color: #ffffff;
-        border-radius: 10px;
-        padding: 10px;
+        border-radius: 12px;
+        padding: 15px;
+    }
+
+    /* Table Font Scaling */
+    .stDataFrame div {
+        font-size: 16px !important;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ENHANCED CHART STYLING ENGINE (Light Mode) ---
+# --- 2. ENHANCED CHART STYLING ENGINE (Scaled for 16px) ---
 def apply_pro_layout(fig, title, chart_type="pie"):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=80, b=40, l=10, r=10), 
-        height=400, 
+        margin=dict(t=100, b=50, l=10, r=10), 
+        height=450, 
         showlegend=(chart_type == "pie"),
         title=dict(
             text=f"<b>{title}</b>",
             x=0.02, y=0.95, xanchor='left',
-            font=dict(size=20, color='#1e293b')
+            font=dict(size=22, color='#0f172a')
         )
     )
     
     if chart_type == "bar":
-        fig.update_xaxes(showgrid=True, gridcolor="#f1f5f9", title_text="", tickfont=dict(size=12, color="#64748b"))
-        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=13, color="#1e293b", family="Inter-SemiBold"))
+        fig.update_xaxes(showgrid=True, gridcolor="#f1f5f9", title_text="", tickfont=dict(size=14, color="#64748b"))
+        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=15, color="#1e293b", family="Inter-SemiBold"))
         fig.update_traces(
             marker_line_width=0, 
             opacity=0.9, 
             texttemplate='<b>%{x}</b>', 
-            textfont=dict(size=14, color="#1e293b"), 
+            textfont=dict(size=16, color="#1e293b"), 
             textposition='outside'
         )
     else:
         fig.update_traces(
             textinfo='percent+value', 
             hole=0.5, 
-            textfont=dict(size=13, family="Inter-Bold"), 
-            marker=dict(line=dict(color='#ffffff', width=2)),
+            textfont=dict(size=15, family="Inter-Bold"), 
+            marker=dict(line=dict(color='#ffffff', width=3)),
             hoverinfo='label+percent'
         )
         fig.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
+            legend=dict(
+                orientation="h", 
+                yanchor="bottom", 
+                y=-0.25, 
+                xanchor="center", 
+                x=0.5,
+                font=dict(size=14)
+            )
         )
     return fig
 
 # --- 3. MAIN INTERFACE ---
-st.markdown("<h1 style='color: #0f172a; font-weight: 900; letter-spacing: -1.5px;'>🛡️ Ops Intelligence Command</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='color: #0f172a; font-weight: 900; letter-spacing: -2px; font-size: 42px;'>🛡️ Ops Intelligence Command</h1>", unsafe_allow_html=True)
 uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibility="collapsed")
 
 if uploaded_file:
@@ -130,11 +143,11 @@ if uploaded_file:
 
         # --- HEADER SECTION ---
         st.markdown(f"""
-            <div style="margin-bottom: 40px; border-left: 6px solid #3b82f6; padding-left: 25px; margin-top: 20px;">
-                <h2 style="color: #0f172a; font-weight: 800; margin-bottom: 0px; font-size: 36px; letter-spacing: -1px;">
+            <div style="margin-bottom: 45px; border-left: 8px solid #3b82f6; padding-left: 30px; margin-top: 30px;">
+                <h2 style="color: #0f172a; font-weight: 800; margin-bottom: 0px; font-size: 40px; letter-spacing: -1px;">
                     IT Tracker Dashboard
                 </h2>
-                <p style="color: #64748b; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; font-weight: 600;">
+                <p style="color: #64748b; font-size: 18px; text-transform: uppercase; letter-spacing: 3px; margin-top: 8px; font-weight: 600;">
                     Corporate Performance View ({df_units.shape[0]} Active Categories)
                 </p>
             </div>
@@ -151,7 +164,7 @@ if uploaded_file:
             st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure</div><div class='metric-val'>{rate:.1f}%</div></div>", unsafe_allow_html=True)
         with k4:
             high_risk = len(df[df['Severity'].str.contains('High', na=False)])
-            st.markdown(f"<div class='metric-container' style='border-top-color:#ef4444'><div class='metric-lbl'>High Risk</div><div class='metric-val'>{high_risk}</div></div>", unsafe_allow_html=True)
+            st.markdown(f"<div class='metric-container' style='border-top-color:#ef4444'><div class='metric-lbl'>High Risk</div><div class='metric-val' style='color:#ef4444'>{high_risk}</div></div>", unsafe_allow_html=True)
         with k5:
             avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
             st.markdown(f"<div class='metric-container' style='border-top-color:#10b981'><div class='metric-lbl'>Aging</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
