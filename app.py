@@ -2,110 +2,121 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# --- 1. PREMIUM LIGHT HUD SETUP ---
+# --- 1. HUD & LIGHT THEME SETUP ---
 st.set_page_config(page_title="Ops Executive Brief", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap');
     
+    /* Root Body Overrides */
     html, body, [class*="st-"] {
         font-family: 'Inter', sans-serif;
-        background-color: #fcfcfd;
-        color: #0f172a;
+        background-color: #f8f9fb;
+        color: #1e293b;
     }
 
+    /* Professional Metric Cards */
     .metric-container {
         background: #ffffff;
         border: 1px solid #e2e8f0;
-        border-bottom: 6px solid #2563eb; 
-        padding: 30px;
-        border-radius: 20px;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.04);
-        margin-bottom: 20px;
+        border-top: 4px solid #3b82f6;
+        padding: 24px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease;
     }
-    
+    .metric-container:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
     .metric-val { 
-        font-size: 64px; 
+        font-size: 48px; 
         font-weight: 900; 
-        color: #1e293b; 
-        line-height: 0.9;
-        letter-spacing: -3px;
+        color: #0f172a; 
+        line-height: 1.1;
+        letter-spacing: -1px;
     }
-    
     .metric-lbl { 
-        font-size: 16px; 
+        font-size: 13px; 
         color: #64748b; 
         text-transform: uppercase; 
-        letter-spacing: 2.5px; 
-        margin-bottom: 15px; 
-        font-weight: 800;
+        letter-spacing: 1.2px; 
+        margin-bottom: 8px; 
+        font-weight: 700;
     }
     
+    /* Sleek Section Headers */
     .section-box {
-        padding: 20px 0px;
-        border-bottom: 3px solid #1e293b;
-        margin-top: 50px;
-        margin-bottom: 30px;
-        color: #1e293b;
-        font-weight: 900;
+        padding: 10px 0px;
+        border-bottom: 2px solid #e2e8f0;
+        margin-top: 40px;
+        margin-bottom: 20px;
+        color: #334155;
+        font-weight: 800;
         text-transform: uppercase;
-        font-size: 22px;
-        letter-spacing: 2px;
+        font-size: 14px;
+        letter-spacing: 1px;
+    }
+
+    /* File Uploader Customization */
+    .stFileUploader {
+        background-color: #ffffff;
+        border-radius: 10px;
+        padding: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. HIGH-CONTRAST CHART ENGINE ---
+# --- 2. ENHANCED CHART STYLING ENGINE (Light Mode) ---
 def apply_pro_layout(fig, title, chart_type="pie"):
     fig.update_layout(
         template="plotly_white",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=100, b=40, l=10, r=10), 
-        height=480, 
+        margin=dict(t=80, b=40, l=10, r=10), 
+        height=400, 
         showlegend=(chart_type == "pie"),
         title=dict(
-            text=f"<span style='font-size:28px; font-weight:900; color:#0f172a'>{title}</span>",
-            x=0.02, y=0.95, xanchor='left'
+            text=f"<b>{title}</b>",
+            x=0.02, y=0.95, xanchor='left',
+            font=dict(size=20, color='#1e293b')
         )
     )
     
     if chart_type == "bar":
-        fig.update_xaxes(showgrid=True, gridcolor="#f1f5f9", title_text="", tickfont=dict(size=14, color="#475569", weight='bold'))
-        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=16, color="#0f172a", family="Inter-Bold"))
+        fig.update_xaxes(showgrid=True, gridcolor="#f1f5f9", title_text="", tickfont=dict(size=12, color="#64748b"))
+        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=13, color="#1e293b", family="Inter-SemiBold"))
         fig.update_traces(
             marker_line_width=0, 
-            opacity=1.0, 
+            opacity=0.9, 
             texttemplate='<b>%{x}</b>', 
-            textfont=dict(size=18, color="#ffffff"), 
-            textposition='inside'
+            textfont=dict(size=14, color="#1e293b"), 
+            textposition='outside'
         )
     else:
-        # FIXED: Removed 'palette' and used marker colors instead
         fig.update_traces(
             textinfo='percent+value', 
-            hole=0.55, 
-            textfont=dict(size=17, family="Inter-Bold"), 
-            marker=dict(line=dict(color='#ffffff', width=3)),
+            hole=0.5, 
+            textfont=dict(size=13, family="Inter-Bold"), 
+            marker=dict(line=dict(color='#ffffff', width=2)),
             hoverinfo='label+percent'
         )
         fig.update_layout(
-            legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5, font=dict(size=15))
+            legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5)
         )
     return fig
 
 # --- 3. MAIN INTERFACE ---
-st.markdown("<h1 style='color: #0f172a; font-weight: 900; font-size: 62px; letter-spacing: -3px; margin-bottom: 20px;'>Ops Intelligence</h1>", unsafe_allow_html=True)
-
-uploaded_file = st.file_uploader("Upload Data Feed", type=["xlsx"], label_visibility="collapsed")
+st.markdown("<h1 style='color: #0f172a; font-weight: 900; letter-spacing: -1.5px;'>🛡️ Ops Intelligence Command</h1>", unsafe_allow_html=True)
+uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibility="collapsed")
 
 if uploaded_file:
     try:
         df = pd.read_excel(uploaded_file)
         df.columns = df.columns.str.strip()
         
-        # Data Normalization
+        # Standardize Data
         cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
         df[cols] = df[cols].ffill()
         df['Severity'] = df['Severity'].astype(str).str.capitalize()
@@ -117,47 +128,80 @@ if uploaded_file:
 
         df_units = df.drop_duplicates(subset=['Category']).copy()
 
-        # --- ROW 1: GIANT KPIs ---
-        k1, k2, k3, k4 = st.columns(4)
+        # --- HEADER SECTION ---
+        st.markdown(f"""
+            <div style="margin-bottom: 40px; border-left: 6px solid #3b82f6; padding-left: 25px; margin-top: 20px;">
+                <h2 style="color: #0f172a; font-weight: 800; margin-bottom: 0px; font-size: 36px; letter-spacing: -1px;">
+                    IT Tracker Dashboard
+                </h2>
+                <p style="color: #64748b; font-size: 16px; text-transform: uppercase; letter-spacing: 2px; margin-top: 5px; font-weight: 600;">
+                    Corporate Performance View ({df_units.shape[0]} Active Categories)
+                </p>
+            </div>
+        """, unsafe_allow_html=True)
+
+        # --- ROW 1: KPIs ---
+        k1, k2, k3, k4, k5 = st.columns(5)
         
-        with k1:
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{len(df_units)}</div></div>", unsafe_allow_html=True)
-            
-        with k2:
+        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Units</div><div class='metric-val'>{len(df_units)}</div></div>", unsafe_allow_html=True)
+        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
+        with k3:
             closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
             rate = (closed/len(df)*100) if len(df) > 0 else 0
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Velocity</div><div class='metric-val'>{rate:.0f}%</div></div>", unsafe_allow_html=True)
-            
-        with k3:
-            high_risk = len(df[df['Severity'] == 'High'])
-            st.markdown(f"<div class='metric-container' style='border-bottom-color:#dc2626'><div class='metric-lbl'>Critical</div><div class='metric-val' style='color:#dc2626'>{high_risk}</div></div>", unsafe_allow_html=True)
-            
+            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure</div><div class='metric-val'>{rate:.1f}%</div></div>", unsafe_allow_html=True)
         with k4:
-            avg_w = df[df['Wks']>0]['Wks'].mean() if not df[df['Wks']>0].empty else 0
-            st.markdown(f"<div class='metric-container' style='border-bottom-color:#059669'><div class='metric-lbl'>Avg Aging</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
+            high_risk = len(df[df['Severity'].str.contains('High', na=False)])
+            st.markdown(f"<div class='metric-container' style='border-top-color:#ef4444'><div class='metric-lbl'>High Risk</div><div class='metric-val'>{high_risk}</div></div>", unsafe_allow_html=True)
+        with k5:
+            avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
+            st.markdown(f"<div class='metric-container' style='border-top-color:#10b981'><div class='metric-lbl'>Aging</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
 
-        # --- ROW 2: ANALYTICS ---
-        st.markdown("<div class='section-box'>Statistical Analysis</div>", unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
+        # --- ROW 2: VISUALIZATIONS ---
+        st.markdown("<div class='section-box'>Analytical Breakdown</div>", unsafe_allow_html=True)
+        d1, d2, d3, d4 = st.columns(4)
         
-        with c1:
-            # FIXED: Set colors directly in the express function
-            fig1 = px.pie(df_units, names='Status', 
-                          color_discrete_sequence=["#1e293b", "#2563eb", "#3b82f6", "#64748b", "#cbd5e1"])
-            st.plotly_chart(apply_pro_layout(fig1, "Operations Status"), use_container_width=True)
+        with d1:
+            fig1 = px.pie(df_units, names='Status', color_discrete_sequence=["#3b82f6", "#10b981", "#f59e0b"])
+            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
             
-        with c2:
-            type_counts = df_units['Type'].value_counts().reset_index()
-            # FIXED: Updated column name handling for plotly express
-            fig2 = px.bar(type_counts, x=type_counts.columns[1], y=type_counts.columns[0], orientation='h',
-                          color_discrete_sequence=["#2563eb"])
-            st.plotly_chart(apply_pro_layout(fig2, "Volume by Classification", "bar"), use_container_width=True)
+        with d2:
+            target_order = ['Low', 'Medium', 'High'] 
+            sev_counts = df_units['Severity'].value_counts().reindex(target_order).dropna().reset_index()
+            sev_counts.columns = ['Severity', 'count']
+            fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
+                          color='Severity',
+                          color_discrete_map={'High': '#ef4444', 'Medium': '#3b82f6', 'Low': '#94a3b8'})
+            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", "bar"), use_container_width=True)
+            
+        with d3:
+            fig3 = px.pie(df_units, names='Domain', color_discrete_sequence=px.colors.qualitative.Safe)
+            st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
 
-        # --- ROW 3: DATAFRAME ---
-        st.markdown("<div class='section-box'>Full Incident Log</div>", unsafe_allow_html=True)
-        st.dataframe(df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']], use_container_width=True, hide_index=True)
+        with d4:
+            type_counts = df_units['Type'].value_counts().reset_index().sort_values('count')
+            fig4 = px.bar(type_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#6366f1'])
+            st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
+
+        # --- ROW 3: DETAILED LEDGER ---
+        st.markdown("<div class='section-box'>Operational Ledger</div>", unsafe_allow_html=True)
+        
+        def style_rows(row):
+            styles = [''] * len(row)
+            if row['Severity'] == 'High': styles[row.index.get_loc('Severity')] = 'background-color: #fee2e2; color: #991b1b; font-weight: bold'
+            if row['Status'] in ['Closed', 'Complete']: styles[row.index.get_loc('Status')] = 'color: #15803d; font-weight: bold'
+            return styles
+
+        st.dataframe(
+            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']].style.apply(style_rows, axis=1),
+            column_config={
+                "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
+                "Status": st.column_config.TextColumn("State"),
+                "Severity": st.column_config.TextColumn("Risk Class")
+            },
+            use_container_width=True, hide_index=True
+        )
 
     except Exception as e:
-        st.error(f"Error initializing dashboard: {e}")
+        st.error(f"System Error: {e}")
 else:
-    st.info("System Ready. Please upload the Excel Data Feed.")
+    st.info("System Ready. Please upload the Excel Data Feed to begin.")
