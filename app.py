@@ -1,206 +1,200 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
-# --- 1. HUD & THEME SETUP ---
-st.set_page_config(page_title="Ops Executive Brief", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. HUD & ADVANCED THEME SETUP ---
+st.set_page_config(page_title="Ops Intelligence Command", layout="wide", initial_sidebar_state="expanded")
 
 st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    html, body, [class*="css"] { font-family: 'Inter', sans-serif; background-color: #05070a; color: #e6edf3; }
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;700;900&display=swap');
     
-    .metric-container {
-        background: #0d1117;
-        border: 1px solid #30363d;
-        border-left: 6px solid #58a6ff;
-        padding: 24px;
-        border-radius: 14px;
-        margin-bottom: 10px;
+    :root {
+        --primary: #58a6ff;
+        --bg-dark: #0d1117;
+        --card-bg: rgba(22, 27, 34, 0.7);
+        --border-color: #30363d;
     }
+
+    html, body, [class*="css"] { 
+        font-family: 'Inter', sans-serif; 
+        background-color: #05070a; 
+        color: #e6edf3; 
+    }
+
+    /* Glassmorphic Metric Cards */
+    .metric-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        border-radius: 16px;
+        transition: transform 0.3s ease, border-color 0.3s ease;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+    }
+
     .metric-val { 
-        font-size: 52px; 
+        font-size: 42px; 
         font-weight: 900; 
         color: #ffffff; 
-        line-height: 1;
-        text-shadow: 0px 0px 12px rgba(88, 166, 255, 0.25);
-    }
-    .metric-lbl { 
-        font-size: 15px; 
-        color: #8b949e; 
-        text-transform: uppercase; 
-        letter-spacing: 2px; 
-        margin-bottom: 12px; 
-        font-weight: 700;
+        font-family: 'JetBrains Mono', monospace;
+        letter-spacing: -2px;
     }
     
-    .section-box {
-        padding: 15px 0px;
-        border-bottom: 2px solid #30363d;
-        margin-top: 35px;
-        margin-bottom: 25px;
-        color: #58a6ff;
-        font-weight: 800;
-        text-transform: uppercase;
-        font-size: 15px;
-        letter-spacing: 1.5px;
+    .metric-lbl { 
+        font-size: 12px; 
+        color: #8b949e; 
+        text-transform: uppercase; 
+        letter-spacing: 1.5px; 
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    /* Section Headers */
+    .section-header {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--primary);
+        font-size: 14px;
+        letter-spacing: 3px;
+        margin: 40px 0 20px 0;
+        display: flex;
+        align-items: center;
+    }
+    
+    .section-header::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: linear-gradient(90deg, var(--border-color), transparent);
+        margin-left: 20px;
+    }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: #0d1117;
+        border-right: 1px solid var(--border-color);
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. ENHANCED CHART STYLING ENGINE ---
-def apply_pro_layout(fig, title, chart_type="pie"):
+# --- 2. ADVANCED CHART ENGINE ---
+def apply_pro_layout(fig, title, is_bar=False):
     fig.update_layout(
         template="plotly_dark",
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(t=70, b=30, l=10, r=50), 
-        height=400, 
-        showlegend=(chart_type == "pie"),
+        margin=dict(t=80, b=20, l=10, r=10),
+        height=380,
+        font=dict(family="Inter"),
         title=dict(
-            text=f"<b>{title}</b>",
-            x=0.02, y=0.98, xanchor='left',
-            font=dict(size=22, color='#ffffff')
+            text=f"<span style='font-size:18px; color:#8b949e; font-weight:300'>{title}</span>",
+            x=0.05, y=0.95
         )
     )
-    
-    if chart_type == "bar":
-        fig.update_xaxes(showgrid=True, gridcolor="#161b22", title_text="", tickfont=dict(size=14, color="#8b949e"))
-        fig.update_yaxes(showgrid=False, title_text="", tickfont=dict(size=16, color="#ffffff", family="Inter-Bold"))
-        fig.update_traces(
-            marker_line_width=0, 
-            opacity=1.0, 
-            texttemplate='<b>%{x}</b>', 
-            textfont=dict(size=18, color="#ffffff"), 
-            textposition='outside', 
-            cliponaxis=False
-        )
+    if is_bar:
+        fig.update_traces(marker_color='#58a6ff', marker_line_width=0, opacity=0.8)
+        fig.update_xaxes(showgrid=False, zeroline=False)
+        fig.update_yaxes(showgrid=True, gridcolor="#161b22", zeroline=False)
     else:
-        fig.update_traces(
-            textinfo='percent+value', 
-            hole=0.6, 
-            textfont=dict(size=16, family="Inter-Black"), 
-            marker=dict(line=dict(color='#05070a', width=3)),
-            hoverinfo='label+percent'
-        )
-        fig.update_layout(
-            legend=dict(
-                orientation="h", 
-                yanchor="bottom", 
-                y=-0.25, 
-                xanchor="center", 
-                x=0.5, 
-                font=dict(size=14)
-            )
-        )
+        fig.update_traces(hole=0.7, marker=dict(line=dict(color='#05070a', width=2)))
     return fig
 
-# --- 3. MAIN INTERFACE ---
-st.title("🛡️ Ops Intelligence Command")
-uploaded_file = st.file_uploader("Drop Data Feed", type=["xlsx"], label_visibility="collapsed")
+# --- 3. DATA PROCESSING ---
+def load_and_clean(file):
+    df = pd.read_excel(file)
+    df.columns = df.columns.str.strip()
+    cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
+    df[cols] = df[cols].ffill()
+    df['Severity'] = df['Severity'].astype(str).str.capitalize()
+    if 'Duration' in df.columns:
+        df['Wks'] = df['Duration'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+    else:
+        df['Wks'] = 0
+    return df
+
+# --- 4. MAIN INTERFACE ---
+with st.sidebar:
+    st.markdown("### 🎚️ CONTROL PANEL")
+    uploaded_file = st.file_uploader("Upload Data Feed", type=["xlsx"])
+    st.divider()
+    if uploaded_file:
+        df_raw = load_and_clean(uploaded_file)
+        
+        # Advanced Filters
+        domain_filter = st.multiselect("Filter Domain", options=df_raw['Domain'].unique(), default=df_raw['Domain'].unique())
+        severity_filter = st.multiselect("Filter Severity", options=df_raw['Severity'].unique(), default=df_raw['Severity'].unique())
+        
+        df = df_raw[(df_raw['Domain'].isin(domain_filter)) & (df_raw['Severity'].isin(severity_filter))]
+        df_units = df.drop_duplicates(subset=['Category'])
 
 if uploaded_file:
-    try:
-        df = pd.read_excel(uploaded_file)
-        df.columns = df.columns.str.strip()
-        
-        # Standardize Data
-        cols = ['Domain', 'Category', 'Status', 'Severity', 'Type']
-        df[cols] = df[cols].ffill()
-        df['Severity'] = df['Severity'].astype(str).str.capitalize()
-        
-        if 'Duration' in df.columns:
-            df['Wks'] = df['Duration'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
-        else:
-            df['Wks'] = 0
+    # --- HEADER ---
+    st.markdown(f"""
+        <div style="padding: 20px 0px;">
+            <h1 style="font-weight:900; letter-spacing:-2px; margin-bottom:0px;">OPS<span style="color:#58a6ff">INTELLIGENCE</span>.sys</h1>
+            <p style="color:#8b949e; font-family:'JetBrains Mono'; font-size:14px;">TERMINAL B-4 // {len(df)} ACTIVE TASKS DETECTED</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-        # --- CRITICAL STEP: CREATE UNIT-ONLY MASTER (26 Unique Categories) ---
-        # This ensures all charts use the same "26" base count
-        df_units = df.drop_duplicates(subset=['Category']).copy()
+    # --- ROW 1: KPI CARDS ---
+    k1, k2, k3, k4 = st.columns(4)
+    
+    with k1:
+        st.markdown(f"""<div class="metric-card"><div class="metric-lbl">Total Categories</div><div class="metric-val">{len(df_units)}</div></div>""", unsafe_allow_html=True)
+    with k2:
+        closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
+        rate = (closed/len(df)*100) if len(df) > 0 else 0
+        st.markdown(f"""<div class="metric-card"><div class="metric-lbl">Efficiency Rate</div><div class="metric-val">{rate:.1f}%</div></div>""", unsafe_allow_html=True)
+    with k3:
+        high_risk = len(df[df['Severity'] == 'High'])
+        st.markdown(f"""<div class="metric-card" style="border-left: 4px solid #f85149"><div class="metric-lbl">High Risk Incidents</div><div class="metric-val">{high_risk}</div></div>""", unsafe_allow_html=True)
+    with k4:
+        avg_w = df['Wks'].mean()
+        st.markdown(f"""<div class="metric-card"><div class="metric-lbl">Avg Cycle Time</div><div class="metric-val">{avg_w:.1f}w</div></div>""", unsafe_allow_html=True)
 
-        # --- HEADER SECTION ---
-        st.markdown(f"""
-            <div style="margin-bottom: 45px; border-left: 5px solid #58a6ff; padding-left: 30px; margin-top: 30px;">
-                <h1 style="color: #ffffff; font-family: 'Inter', sans-serif; font-weight: 900; margin-bottom: 0px; font-size: 48px; letter-spacing: -1.5px;">
-                    IT Tracker Dashboard
-                </h1>
-                <p style="color: #8b949e; font-size: 18px; text-transform: uppercase; letter-spacing: 4px; margin-top: 10px; font-weight: 500;">
-                    Unified Operational View ({df_units.shape[0]} Categories)
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
+    # --- ROW 2: ANALYTICS GRID ---
+    st.markdown('<div class="section-header">DATA VISUALIZATION LAYER</div>', unsafe_allow_html=True)
+    c1, c2 = st.columns([1, 1])
 
-        # --- ROW 1: KPIs ---
-        k1, k2, k3, k4, k5 = st.columns(5)
-        
-        total_units_val = df_units.shape[0] # Should be 26
-        
-        with k1: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Total Units</div><div class='metric-val'>{total_units_val}</div></div>", unsafe_allow_html=True)
-        with k2: st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Active Tasks</div><div class='metric-val'>{len(df)}</div></div>", unsafe_allow_html=True)
-        with k3:
-            closed = len(df[df['Status'].str.contains('Closed|Complete', case=False, na=False)])
-            rate = (closed/len(df)*100) if len(df) > 0 else 0
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Closure Rate</div><div class='metric-val'>{rate:.1f}%</div></div>", unsafe_allow_html=True)
-        with k4:
-            high_risk = len(df[df['Severity'].str.contains('High', na=False)])
-            st.markdown(f"<div class='metric-container' style='border-left-color:#f85149'><div class='metric-lbl'>High Risk Tasks</div><div class='metric-val'>{high_risk}</div></div>", unsafe_allow_html=True)
-        with k5:
-            avg_w = df[df['Wks']>0]['Wks'].mean() if len(df[df['Wks']>0]) > 0 else 0
-            st.markdown(f"<div class='metric-container'><div class='metric-lbl'>Avg Longevity</div><div class='metric-val'>{avg_w:.1f}w</div></div>", unsafe_allow_html=True)
+    with c1:
+        # Donut Chart for Status
+        fig_stat = px.pie(df_units, names='Status', color_discrete_sequence=['#58a6ff', '#2ea043', '#d29922', '#30363d'])
+        st.plotly_chart(apply_pro_layout(fig_stat, "DISTRIBUTION BY STATE"), use_container_width=True)
 
-        # --- ROW 2: VISUALIZATIONS (ALL BASED ON DF_UNITS) ---
-        st.markdown("<div class='section-box'>Volume & Risk Distribution (Unit-Level)</div>", unsafe_allow_html=True)
-        d1, d2, d3, d4 = st.columns(4)
-        
-        with d1:
-            # Status based on Category
-            fig1 = px.pie(df_units, names='Status', color_discrete_sequence=["#58a6ff", "#2ea043", "#d29922"])
-            st.plotly_chart(apply_pro_layout(fig1, "Delivery Status", "pie"), use_container_width=True)
-            
-        with d2:
-            # Severity based on Category
-            target_order = ['Low', 'Medium', 'High'] 
-            sev_counts = df_units['Severity'].value_counts().reindex(target_order).dropna().reset_index()
-            sev_counts.columns = ['Severity', 'count']
-            fig2 = px.bar(sev_counts, x='count', y='Severity', orientation='h',
-                          color='Severity',
-                          color_discrete_map={'High': '#f85149', 'Medium': '#58a6ff', 'Low': '#30363d'})
-            st.plotly_chart(apply_pro_layout(fig2, "Risk Levels", "bar"), use_container_width=True)
-            
-        with d3:
-            # Domain based on Category
-            fig3 = px.pie(df_units, names='Domain', color_discrete_sequence=px.colors.qualitative.Pastel)
-            st.plotly_chart(apply_pro_layout(fig3, "Domain Split", "pie"), use_container_width=True)
+    with c2:
+        # Horizontal Bar for Severity
+        sev_data = df_units['Severity'].value_counts().reset_index()
+        fig_sev = px.bar(sev_data, x='count', y='Severity', orientation='h')
+        st.plotly_chart(apply_pro_layout(fig_sev, "INCIDENT SEVERITY SCALE", is_bar=True), use_container_width=True)
 
-        with d4:
-            # Type based on Category
-            type_counts = df_units['Type'].value_counts().reset_index()
-            type_counts.columns = ['Type', 'count']
-            type_counts = type_counts.sort_values('count')
-            
-            fig4 = px.bar(type_counts, x='count', y='Type', orientation='h', color_discrete_sequence=['#58a6ff'])
-            st.plotly_chart(apply_pro_layout(fig4, "Request Type", "bar"), use_container_width=True)
+    # --- ROW 3: DATAFRAME ---
+    st.markdown('<div class="section-header">REAL-TIME OPERATIONS LEDGER</div>', unsafe_allow_html=True)
+    
+    # Custom Styled Dataframe
+    st.dataframe(
+        df[['Domain', 'Category', 'Status', 'Severity', 'Wks']],
+        column_config={
+            "Wks": st.column_config.ProgressColumn("Aging", min_value=0, max_value=20, format="%d weeks"),
+            "Severity": st.column_config.SelectboxColumn("Risk", options=["High", "Medium", "Low"]),
+            "Status": st.column_config.TextColumn("State")
+        },
+        use_container_width=True,
+        hide_index=True
+    )
 
-        # --- ROW 3: DETAILED LEDGER ---
-        st.markdown("<div class='section-box'>Detailed Operations Ledger</div>", unsafe_allow_html=True)
-        
-        def color_severity(val):
-            if val == 'High': return 'color: #f85149; font-weight: bold'
-            if val in ['Closed', 'Complete']: return 'color: #2ea043; font-weight: bold'
-            return 'color: #8b949e'
-
-        st.dataframe(
-            df[['Domain', 'Type', 'Category', 'Status', 'Severity', 'Wks']].style.map(color_severity, subset=['Severity', 'Status']),
-            column_config={
-                "Wks": st.column_config.ProgressColumn("Longevity", min_value=0, max_value=52, format="%d weeks"),
-                "Status": st.column_config.TextColumn("Current State"),
-                "Severity": st.column_config.TextColumn("Risk Class"),
-                "Type": st.column_config.TextColumn("Classification")
-            },
-            use_container_width=True, hide_index=True
-        )
-
-    except Exception as e:
-        st.error(f"System Error: {e}")
 else:
-    st.info("System Ready. Upload Data Feed.")
+    # Empty State
+    st.markdown("""
+        <div style="height: 400px; display: flex; align-items: center; justify-content: center; border: 1px dashed #30363d; border-radius: 20px;">
+            <div style="text-align: center; color: #8b949e;">
+                <h2 style="font-weight: 300;">Awaiting Data Feed...</h2>
+                <p>Upload an .xlsx file in the sidebar to initialize command center.</p>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
